@@ -1,0 +1,28 @@
+# Node
+node_modules/
+.next/
+out/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Editors / OS
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Local uploads
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# Local databases / caches
+*.db
+*.sqlite3
+.pytest_cache/
