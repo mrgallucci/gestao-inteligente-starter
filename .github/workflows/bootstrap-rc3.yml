@@ -40,18 +40,18 @@ jobs:
         run: |
           set -euo pipefail
           cp -a /tmp/rc3-delta/. .
+          rm -f .github/workflows/ci.yml
           cd frontend
           npm install --package-lock-only --ignore-scripts
           cd ..
           rm -rf .bootstrap
-          rm -f .github/workflows/bootstrap-rc3.yml
 
-      - name: Commit RC
+      - name: Commit RC source
         shell: bash
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          git commit -m "release: Gestão Inteligente 2.0.2-rc.3"
+          git commit -m "release: Gestão Inteligente 2.0.2-rc.3 source"
           git push origin HEAD:release/2.0.2-rc.3
