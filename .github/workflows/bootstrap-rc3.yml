@@ -1,0 +1,57 @@
+name: Bootstrap RC3
+
+on:
+  push:
+    branches:
+      - release/2.0.2-rc.3
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  unpack:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Reconstruct delta
+        shell: bash
+        run: |
+          set -euo pipefail
+          : > /tmp/rc3.b64
+          cat .bootstrap/rc3.nolock.part0 >> /tmp/rc3.b64
+          head -c 7500 .bootstrap/rc3.nolock.part1 >> /tmp/rc3.b64
+          cat .bootstrap/rc3.nolock.part1.fix7500-7999 >> /tmp/rc3.b64
+          tail -c +8001 .bootstrap/rc3.nolock.part1 >> /tmp/rc3.b64
+          for i in $(seq 2 8); do
+            cat ".bootstrap/rc3.nolock.part${i}" >> /tmp/rc3.b64
+          done
+          test "$(wc -c < /tmp/rc3.b64)" -eq 84556
+          base64 --decode /tmp/rc3.b64 > /tmp/rc3-delta.tar.xz
+          mkdir -p /tmp/rc3-delta
+          tar -xJf /tmp/rc3-delta.tar.xz -C /tmp/rc3-delta
+
+      - name: Apply RC source
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp -a /tmp/rc3-delta/. .
+          cd frontend
+          npm install --package-lock-only --ignore-scripts
+          cd ..
+          rm -rf .bootstrap
+          rm -f .github/workflows/bootstrap-rc3.yml
+
+      - name: Commit RC
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "release: Gestão Inteligente 2.0.2-rc.3"
+          git push origin HEAD:release/2.0.2-rc.3
