@@ -78,6 +78,56 @@ function roleLabel(
 }
 
 
+type LoadResult =
+  | { kind: "unauthorized" }
+  | { kind: "forbidden" }
+  | { kind: "failed" }
+  | { kind: "network-error" }
+  | { kind: "ok"; users: UserItem[]; leads: LeadOption[] };
+
+
+async function fetchUsersAndLeads(): Promise<LoadResult> {
+  try {
+    const [
+      usersResponse,
+      leadsResponse,
+    ] = await Promise.all([
+      clientApi("/api/users"),
+      clientApi("/api/admin/lead-options"),
+    ]);
+
+    if (
+      usersResponse.status === 401 ||
+      leadsResponse.status === 401
+    ) {
+      return { kind: "unauthorized" };
+    }
+
+    if (
+      usersResponse.status === 403 ||
+      leadsResponse.status === 403
+    ) {
+      return { kind: "forbidden" };
+    }
+
+    if (
+      !usersResponse.ok ||
+      !leadsResponse.ok
+    ) {
+      return { kind: "failed" };
+    }
+
+    return {
+      kind: "ok",
+      users: await usersResponse.json(),
+      leads: await leadsResponse.json(),
+    };
+  } catch {
+    return { kind: "network-error" };
+  }
+}
+
+
 export default function UsersPage() {
   const router = useRouter();
 
@@ -137,89 +187,82 @@ export default function UsersPage() {
   ] = useState("");
 
 
-  const loadData =
+  // Busca sem alterar estado React: devolve o resultado e quem chama decide o
+  // que fazer. Assim o effect inicial usa .then (sem setState síncrono no effect)
+  // e os handlers continuam usando loadData() com o mesmo comportamento de antes.
+  const applyLoadResult =
     useCallback(
-      async () => {
-        try {
-          const [
-            usersResponse,
-            leadsResponse,
-          ] = await Promise.all([
-            clientApi("/api/users"),
-            clientApi("/api/admin/lead-options"),
-          ]);
-
-
-          if (
-            usersResponse.status ===
-              401 ||
-            leadsResponse.status ===
-              401
-          ) {
+      (result: LoadResult) => {
+        switch (result.kind) {
+          case "unauthorized":
             router.replace(
               "/login"
             );
+            break;
 
-            return;
-          }
-
-
-          if (
-            usersResponse.status ===
-              403 ||
-            leadsResponse.status ===
-              403
-          ) {
+          case "forbidden":
             setError(
               "Somente administradores podem acessar esta página."
             );
+            break;
 
-            return;
-          }
-
-
-          if (
-            !usersResponse.ok ||
-            !leadsResponse.ok
-          ) {
+          case "failed":
             setError(
               "Não foi possível carregar os usuários."
             );
+            break;
 
-            return;
-          }
+          case "network-error":
+            setError(
+              "Não foi possível conectar ao servidor."
+            );
+            break;
 
+          case "ok":
+            setUsers(
+              result.users
+            );
 
-          const usersData =
-            await usersResponse.json();
-
-          const leadsData =
-            await leadsResponse.json();
-
-          setUsers(
-            usersData
-          );
-
-          setLeads(
-            leadsData
-          );
-
-        } catch {
-          setError(
-            "Não foi possível conectar ao servidor."
-          );
-
-        } finally {
-          setLoading(false);
+            setLeads(
+              result.leads
+            );
+            break;
         }
+
+        setLoading(false);
       },
       [router]
     );
 
 
+  const loadData =
+    useCallback(
+      async () => {
+        applyLoadResult(
+          await fetchUsersAndLeads()
+        );
+      },
+      [applyLoadResult]
+    );
+
+
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    let active = true;
+
+    fetchUsersAndLeads().then(
+      (result) => {
+        if (active) {
+          applyLoadResult(
+            result
+          );
+        }
+      }
+    );
+
+    return () => {
+      active = false;
+    };
+  }, [applyLoadResult]);
 
 
   function resetForm() {

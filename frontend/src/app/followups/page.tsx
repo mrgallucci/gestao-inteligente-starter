@@ -15,13 +15,15 @@ type FollowUp = {
   follow_up_em: string;
 };
 
-async function getFollowUps(): Promise<FollowUp[]> {
-  return protectedJson<FollowUp[]>("/api/followups", "Não foi possível carregar os follow-ups.");
+// O instante de referência é capturado junto com os dados (fora do render do
+// componente), para o render ser puro e "vencida" usar um único "agora".
+async function getFollowUps(): Promise<{ followups: FollowUp[]; now: number }> {
+  const followups = await protectedJson<FollowUp[]>("/api/followups", "Não foi possível carregar os follow-ups.");
+  return { followups, now: Date.now() };
 }
 
 export default async function FollowUpsPage() {
-  const followups = await getFollowUps();
-  const now = Date.now();
+  const { followups, now } = await getFollowUps();
   const overdue = followups.filter((item) => new Date(item.follow_up_em).getTime() < now).length;
 
   return <div className="mx-auto max-w-6xl">

@@ -14,37 +14,52 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+// Busca o usuário da sessão sem tocar em estado React (permite usar no effect
+// via .then, sem setState síncrono dentro do effect).
+async function fetchSessionUser(): Promise<AuthUser | null> {
+  try {
+    const response = await fetch("/api/session/me", { cache: "no-store" });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const data = await response.json();
+    return {
+      id: data.id,
+      nome: data.nome,
+      email: data.email,
+      role: data.role,
+      lead_id: data.lead_id ?? null,
+      ativo: data.ativo ?? true,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export default function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   async function refreshUser() {
-    try {
-      const response = await fetch("/api/session/me", { cache: "no-store" });
-
-      if (!response.ok) {
-        setUser(null);
-        return;
-      }
-
-      const data = await response.json();
-      setUser({
-        id: data.id,
-        nome: data.nome,
-        email: data.email,
-        role: data.role,
-        lead_id: data.lead_id ?? null,
-        ativo: data.ativo ?? true,
-      });
-    } catch {
-      setUser(null);
-    } finally {
-      setLoading(false);
-    }
+    const sessionUser = await fetchSessionUser();
+    setUser(sessionUser);
+    setLoading(false);
   }
 
   useEffect(() => {
-    refreshUser();
+    let active = true;
+
+    fetchSessionUser().then((sessionUser) => {
+      if (!active) return;
+      setUser(sessionUser);
+      setLoading(false);
+    });
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   function login(authenticatedUser: AuthUser) {

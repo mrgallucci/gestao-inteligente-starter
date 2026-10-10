@@ -26,3 +26,4 @@ backend/uploads/*
 *.db
 *.sqlite3
 .pytest_cache/
+backups/

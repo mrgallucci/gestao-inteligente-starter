@@ -21,6 +21,7 @@ LEAD_COLUMNS = [
     Column("empresa", String(150), nullable=True),
     Column("cargo", String(120), nullable=True),
     Column("email", String(255), nullable=True),
+    Column("area_profissional", String(120), nullable=True),
     Column("telefone", String(50), nullable=True),
     Column("consentimento_contato", Boolean, nullable=False, server_default=text("false")),
     Column("segmento", String(120), nullable=True),

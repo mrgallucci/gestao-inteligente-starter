@@ -28,7 +28,7 @@ const items = [
   { href: "/leads", label: "CRM / Leads", icon: Users, roles: ["admin", "vendedor"] },
   { href: "/funil", label: "Funil de vendas", icon: TrendingUp, roles: ["admin", "vendedor"] },
   { href: "/followups", label: "Follow-ups", icon: CalendarClock, roles: ["admin", "vendedor"] },
-  { href: "/workshop", label: "Workshop IA", icon: Presentation, roles: ["admin", "vendedor"] },
+  { href: "/workshop", label: "Treinamento IA", icon: Presentation, roles: ["admin", "vendedor"] },
   { href: "/omnichannel", label: "Omnichannel", icon: MessagesSquare, roles: ["admin", "vendedor"] },
   { href: "/automacoes", label: "Automações", icon: Sparkles, roles: ["admin", "vendedor"] },
   { href: "/customer-analytics", label: "Customer Analytics", icon: UserRound, roles: ["admin"] },

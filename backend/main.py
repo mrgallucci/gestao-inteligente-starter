@@ -1,4 +1,5 @@
 import os
+import re
 import uuid
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
@@ -7,7 +8,9 @@ from decimal import Decimal
 import jwt
 
 from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.security import (
     HTTPAuthorizationCredentials,
@@ -15,7 +18,7 @@ from fastapi.security import (
 )
 
 from jwt.exceptions import InvalidTokenError
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerificationError, VerifyMismatchError
 
@@ -45,28 +48,72 @@ from models import (
 
 app = FastAPI(
     title="Gestão Inteligente API — SARGTECH",
-    version="2.0.0",
+    version="2.0.2-rc.3",
 )
 
 
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+APP_ENV = os.getenv("APP_ENV", "development").strip().lower()
+IS_PRODUCTION = APP_ENV == "production"
+
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000").rstrip("/")
 UPLOAD_DIR = Path(__file__).resolve().parent / "uploads"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 UPLOAD_BASE_URL = os.getenv("UPLOAD_BASE_URL", "http://127.0.0.1:8000/uploads").rstrip("/")
 
+
+def _build_cors_origins() -> list[str]:
+    """Origens permitidas no CORS.
+
+    O navegador fala com o Next.js (BFF), então a API em si só precisa aceitar
+    o FRONTEND_URL. Origens adicionais (por exemplo, a página do e-book) entram
+    por CORS_ORIGINS, separadas por vírgula. Em desenvolvimento, as portas do
+    Live Server (5500) continuam liberadas; em produção, não.
+    """
+    origins = {FRONTEND_URL}
+    for item in os.getenv("CORS_ORIGINS", "").split(","):
+        item = item.strip().rstrip("/")
+        if item:
+            origins.add(item)
+    if not IS_PRODUCTION:
+        origins.update({"http://localhost:5500", "http://127.0.0.1:5500"})
+    return sorted(origins)
+
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=list({
-        FRONTEND_URL,
-        "http://localhost:5500",
-        "http://127.0.0.1:5500",
-    }),
+    allow_origins=_build_cors_origins(),
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request, exc: RequestValidationError):
+    """Erros de validação (422) com `detail` em texto.
+
+    O padrão do FastAPI devolve `detail` como lista de objetos; o frontend exibe
+    `detail` diretamente na tela, então precisa de uma string.
+    """
+    mensagens: list[str] = []
+    for erro in exc.errors():
+        caminho = [
+            str(parte)
+            for parte in erro.get("loc", ())
+            if parte not in ("body", "query", "path")
+        ]
+        campo = ".".join(caminho)
+        mensagem = str(erro.get("msg", "valor inválido"))
+        if mensagem.startswith("Value error, "):
+            mensagem = mensagem[len("Value error, "):]
+        mensagens.append(f"{campo}: {mensagem}" if campo else mensagem)
+
+    return JSONResponse(
+        status_code=422,
+        content={"detail": "Dados inválidos — " + "; ".join(mensagens)},
+    )
 
 
 # =========================================================
@@ -98,6 +145,21 @@ if not JWT_SECRET_KEY:
     raise RuntimeError(
         "JWT_SECRET_KEY não encontrada no .env"
     )
+
+_JWT_SECRET_PLACEHOLDER = "troque-por-uma-chave-secreta-forte"
+
+if IS_PRODUCTION and (
+    JWT_SECRET_KEY == _JWT_SECRET_PLACEHOLDER or len(JWT_SECRET_KEY) < 32
+):
+    raise RuntimeError(
+        "JWT_SECRET_KEY insegura para APP_ENV=production: use um valor "
+        "aleatório com pelo menos 32 caracteres "
+        "(python -c \"import secrets; print(secrets.token_urlsafe(48))\")."
+    )
+
+# Hash descartável usado para igualar o tempo de resposta do login quando o
+# e-mail não existe (evita enumeração de usuários por tempo de resposta).
+_DUMMY_PASSWORD_HASH = PASSWORD_HASHER.hash("senha-descartavel-sem-uso")
 
 
 bearer_scheme = HTTPBearer(
@@ -137,6 +199,32 @@ STATUS_ORDEM = [
 
 CONVERTED_STATUSES = {"Fechado", "Pós-venda"}
 PAYMENT_STATUSES = {"Pago", "Pendente", "Cancelado", "Reembolsado"}
+TIPOS_CLIENTE = {"B2B", "B2C"}
+
+_EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+def _clean_text(value: str | None) -> str | None:
+    """Remove espaços nas pontas; texto vazio vira None."""
+    if value is None:
+        return None
+    value = value.strip()
+    return value or None
+
+
+def _validate_email(value: str | None) -> str | None:
+    value = _clean_text(value)
+    if value is not None and not _EMAIL_PATTERN.match(value):
+        raise ValueError("E-mail inválido.")
+    return value
+
+
+def _validate_http_url(value: str | None) -> str | None:
+    """Aceita apenas links http(s); bloqueia esquemas como javascript: e data:."""
+    value = _clean_text(value)
+    if value is not None and not re.match(r"^https?://\S+$", value, re.IGNORECASE):
+        raise ValueError("A URL deve começar com http:// ou https://.")
+    return value
 
 
 # =========================================================
@@ -145,13 +233,13 @@ PAYMENT_STATUSES = {"Pago", "Pendente", "Cancelado", "Reembolsado"}
 
 
 class LeadCreate(BaseModel):
-    nome: str
-    origem: str
-    objetivo: str
+    nome: str = Field(min_length=1, max_length=150)
+    origem: str = Field(min_length=1, max_length=100)
+    objetivo: str = Field(min_length=1, max_length=255)
     status: str = "Lead"
-    interesse: str = "Médio"
+    interesse: str = Field(default="Médio", min_length=1, max_length=50)
 
-    idade: int | None = None
+    idade: int | None = Field(default=None, ge=0, le=120)
     genero: str | None = None
     cidade: str | None = None
     faixa_orcamento: str | None = None
@@ -164,7 +252,7 @@ class LeadCreate(BaseModel):
     telefone: str | None = None
     consentimento_contato: bool = False
     segmento: str | None = None
-    tamanho_equipe: int | None = None
+    tamanho_equipe: int | None = Field(default=None, ge=0)
     dor_gatilho: str | None = None
     proxima_acao: str | None = None
     proxima_acao_em: datetime | None = None
@@ -173,6 +261,26 @@ class LeadCreate(BaseModel):
     oferta_interesse: str | None = None
 
     campaign_id: int | None = None
+
+    @field_validator("nome", "origem", "objetivo", "interesse")
+    @classmethod
+    def _strip_required_text(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Campo obrigatório.")
+        return value
+
+    @field_validator("tipo_cliente")
+    @classmethod
+    def _validate_tipo_cliente(cls, value: str) -> str:
+        if value not in TIPOS_CLIENTE:
+            raise ValueError("Tipo de cliente deve ser B2B ou B2C.")
+        return value
+
+    @field_validator("email")
+    @classmethod
+    def _validate_lead_email(cls, value: str | None) -> str | None:
+        return _validate_email(value)
 
 
 class LeadUpdate(LeadCreate):
@@ -184,18 +292,34 @@ class LeadStatusUpdate(BaseModel):
 
 
 class InteractionCreate(BaseModel):
-    tipo: str
-    descricao: str
+    tipo: str = Field(min_length=1, max_length=50)
+    descricao: str = Field(min_length=1)
 
-    resultado: str | None = None
+    resultado: str | None = Field(default=None, max_length=100)
     follow_up_em: datetime | None = None
+
+    @field_validator("tipo", "descricao")
+    @classmethod
+    def _strip_required_text(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Campo obrigatório.")
+        return value
 
 
 class ProductCreate(BaseModel):
-    nome: str
+    nome: str = Field(min_length=1, max_length=150)
     descricao: str | None = None
-    preco: Decimal
+    preco: Decimal = Field(ge=0, max_digits=10, decimal_places=2)
     ativo: bool = True
+
+    @field_validator("nome")
+    @classmethod
+    def _strip_nome(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Nome é obrigatório.")
+        return value
 
 
 class SaleCreate(BaseModel):
@@ -203,7 +327,7 @@ class SaleCreate(BaseModel):
     product_id: int
     quantidade: int = 1
 
-    forma_pagamento: str
+    forma_pagamento: str = Field(min_length=1, max_length=50)
     status_pagamento: str = "Pago"
 
 
@@ -212,10 +336,10 @@ class SalePaymentStatusUpdate(BaseModel):
 
 
 class CampaignCreate(BaseModel):
-    nome: str
-    canal: str
+    nome: str = Field(min_length=1, max_length=150)
+    canal: str = Field(min_length=1, max_length=80)
     descricao: str | None = None
-    custo: Decimal = Decimal("0")
+    custo: Decimal = Field(default=Decimal("0"), ge=0, max_digits=12, decimal_places=2)
     ativo: bool = True
     utm_source: str | None = None
     utm_medium: str | None = None
@@ -230,27 +354,37 @@ class CourseCreate(BaseModel):
 
 
 class CourseContentCreate(BaseModel):
-    titulo: str
+    titulo: str = Field(min_length=1, max_length=200)
     tipo: str
-    ordem: int
+    ordem: int = Field(ge=0)
 
-    duracao_minutos: int | None = None
+    duracao_minutos: int | None = Field(default=None, ge=0)
     descricao: str | None = None
     url_conteudo: str | None = None
 
     ativo: bool = True
+
+    @field_validator("url_conteudo")
+    @classmethod
+    def _validate_url(cls, value: str | None) -> str | None:
+        return _validate_http_url(value)
 
 
 class CourseContentUpdate(BaseModel):
-    titulo: str
+    titulo: str = Field(min_length=1, max_length=200)
     tipo: str
-    ordem: int
+    ordem: int = Field(ge=0)
 
-    duracao_minutos: int | None = None
+    duracao_minutos: int | None = Field(default=None, ge=0)
     descricao: str | None = None
     url_conteudo: str | None = None
 
     ativo: bool = True
+
+    @field_validator("url_conteudo")
+    @classmethod
+    def _validate_url(cls, value: str | None) -> str | None:
+        return _validate_http_url(value)
 
 
 class ContentProgressUpdate(BaseModel):
@@ -482,6 +616,62 @@ def validate_enrollment_access(
 
 
 # =========================================================
+# REGRAS DE VENDA → LEAD → MATRÍCULA
+# =========================================================
+
+
+def mark_lead_closed_after_payment(lead: Lead | None) -> None:
+    """Venda paga leva o Lead a "Fechado", mas nunca faz o funil regredir.
+
+    Um Lead que já está em "Pós-venda" permanece em "Pós-venda".
+    """
+    if lead is not None and lead.status != "Pós-venda":
+        lead.status = "Fechado"
+
+
+def has_other_paid_sale_for_course(
+    db: Session,
+    lead_id: int,
+    product_id: int,
+    exclude_sale_id: int | None = None,
+) -> bool:
+    """Existe outra venda Paga do mesmo produto (curso) para o mesmo Lead?
+
+    Cada curso está ligado a um único produto, então vendas pagas do mesmo
+    produto para o mesmo Lead dão direito à mesma matrícula.
+    """
+    query = db.query(Sale.id).filter(
+        Sale.lead_id == lead_id,
+        Sale.product_id == product_id,
+        Sale.status_pagamento == "Pago",
+    )
+
+    if exclude_sale_id is not None:
+        query = query.filter(Sale.id != exclude_sale_id)
+
+    return query.first() is not None
+
+
+def restore_enrollment_access(enrollment: Enrollment) -> None:
+    """Reativa uma matrícula suspensa preservando o estado acadêmico.
+
+    A suspensão só troca o status; as datas de acesso/conclusão e o progresso
+    dos conteúdos continuam gravados. O status volta coerente com eles:
+    "Concluído" se o curso foi concluído, "Em andamento" se já houve acesso e
+    "Acesso liberado" se o aluno ainda não acessou.
+    """
+    if enrollment.status != "Acesso suspenso":
+        return
+
+    if enrollment.concluido_em is not None:
+        enrollment.status = "Concluído"
+    elif enrollment.primeiro_acesso_em is not None:
+        enrollment.status = "Em andamento"
+    else:
+        enrollment.status = "Acesso liberado"
+
+
+# =========================================================
 # FUNÇÕES AUXILIARES LMS
 # =========================================================
 
@@ -627,9 +817,17 @@ def health():
 def database_health(
     db: Session = Depends(get_db),
 ):
-    result = db.execute(
-        text("SELECT 1")
-    ).scalar()
+    try:
+        result = db.execute(
+            text("SELECT 1")
+        ).scalar()
+    except Exception:
+        # 503 permite que o orquestrador/monitor detecte banco fora do ar
+        # sem expor detalhes da conexão na resposta.
+        raise HTTPException(
+            status_code=503,
+            detail="Banco de dados indisponível.",
+        )
 
     return {
         "database": "online",
@@ -735,6 +933,13 @@ def login(
     )
 
     if not user:
+        # Executa uma verificação descartável para que a resposta demore o
+        # mesmo tempo de um e-mail existente com senha errada.
+        try:
+            PASSWORD_HASHER.verify(_DUMMY_PASSWORD_HASH, data.senha)
+        except (VerifyMismatchError, VerificationError, InvalidHashError):
+            pass
+
         raise HTTPException(
             status_code=401,
             detail=(
@@ -774,6 +979,7 @@ def login(
     return {
         "access_token": token,
         "token_type": "bearer",
+        "expires_in": ACCESS_TOKEN_EXPIRE_MINUTES * 60,
 
         "user": {
             "id": user.id,
@@ -1834,7 +2040,7 @@ def create_sale(
         sale.status_pagamento
         == "Pago"
     ):
-        lead.status = "Fechado"
+        mark_lead_closed_after_payment(lead)
 
         curso = (
             db.query(Course)
@@ -1883,6 +2089,13 @@ def create_sale(
                     nova_matricula
                 )
 
+            else:
+                # Nova compra válida do mesmo curso restaura o acesso de uma
+                # matrícula suspensa, preservando o estado acadêmico.
+                restore_enrollment_access(
+                    matricula_existente
+                )
+
     db.commit()
     db.refresh(nova_venda)
 
@@ -1920,8 +2133,7 @@ def update_sale_payment_status(
 
     if next_status == "Pago":
         lead = db.query(Lead).filter(Lead.id == sale.lead_id).first()
-        if lead:
-            lead.status = "Fechado"
+        mark_lead_closed_after_payment(lead)
 
         if course:
             if not existing:
@@ -1931,11 +2143,19 @@ def update_sale_payment_status(
                     sale_id=sale.id,
                     status="Acesso liberado",
                 ))
-            elif existing.status == "Acesso suspenso":
-                existing.status = "Acesso liberado"
+            else:
+                restore_enrollment_access(existing)
 
     elif next_status in {"Cancelado", "Reembolsado"} and existing:
-        existing.status = "Acesso suspenso"
+        # O acesso só é suspenso se não restar outra venda Paga válida do
+        # mesmo curso para este Lead.
+        if not has_other_paid_sale_for_course(
+            db,
+            sale.lead_id,
+            sale.product_id,
+            exclude_sale_id=sale.id,
+        ):
+            existing.status = "Acesso suspenso"
 
     db.commit()
     db.refresh(sale)
@@ -3625,9 +3845,12 @@ def open_course_content(
         agora
     )
 
-    if (
-        enrollment.status
-        != "Concluído"
+    # Uma matrícula suspensa por cancelamento/reembolso só volta a ser liberada
+    # pela situação financeira (venda Paga). Abrir conteúdo, inclusive como
+    # admin, não pode reativá-la.
+    if enrollment.status not in (
+        "Concluído",
+        "Acesso suspenso",
     ):
         enrollment.status = (
             "Em andamento"
@@ -3823,7 +4046,12 @@ def update_content_progress(
     else:
         progresso_total = 0
 
-    if progresso_total >= 100:
+    if enrollment.status == "Acesso suspenso":
+        # Não altera status nem conclusão de matrícula suspensa (ver
+        # open_course_content): a liberação depende do financeiro.
+        pass
+
+    elif progresso_total >= 100:
         enrollment.status = (
             "Concluído"
         )

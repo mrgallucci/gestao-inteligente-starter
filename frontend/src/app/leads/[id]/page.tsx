@@ -31,6 +31,7 @@ type Lead = {
   tipo_cliente: string;
   empresa: string | null;
   cargo: string | null;
+  area_profissional: string | null;
   email: string | null;
   telefone: string | null;
   consentimento_contato: boolean;
@@ -90,7 +91,9 @@ export default async function LeadPage({ params }: Props) {
   return <div className="mx-auto max-w-7xl">
     <Link href="/leads" className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-900"><ArrowLeft size={18} />Voltar para Leads</Link>
 
-    <header className="mb-8"><p className="text-sm font-semibold uppercase tracking-wider text-emerald-600">CRM / Lead #{lead.id}</p><h1 className="mt-2 text-3xl font-bold text-slate-950">{lead.nome}</h1><p className="mt-2 text-slate-500">Ficha comercial, contexto do Workshop de IA e histórico do relacionamento.</p></header>
+    <header className="mb-8"><p className="text-sm font-semibold uppercase tracking-wider text-emerald-600">CRM / Lead #{lead.id}</p><h1 className="mt-2 text-3xl font-bold text-slate-950">{lead.nome}</h1><p className="mt-2 text-slate-500">
+  Ficha comercial, interesses e histórico do relacionamento com a SargLab.
+</p></header>
 
     <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
       <Card icon={<CircleUserRound />} label="Origem" value={lead.origem} />
@@ -107,7 +110,9 @@ export default async function LeadPage({ params }: Props) {
           <Info icon={<UsersRound size={17} />} label="Tipo / equipe" value={`${lead.tipo_cliente}${lead.tamanho_equipe ? ` · ${lead.tamanho_equipe} pessoas` : ""}`} />
           <Info icon={<Mail size={17} />} label="E-mail" value={lead.email ?? "—"} />
           <Info icon={<Phone size={17} />} label="Telefone" value={lead.telefone ?? "—"} />
-          <Info label="Cargo / área" value={lead.cargo ?? "—"} />
+          <Info label="Cargo / área" value={ lead.cargo && lead.area_profissional? `${lead.cargo} · ${lead.area_profissional}`: lead.cargo ?? lead.area_profissional ?? "—"
+  }
+/>
           <Info label="Segmento" value={lead.segmento ?? "—"} />
           <Info label="Cidade" value={lead.cidade ?? "—"} />
           <Info label="Orçamento" value={lead.faixa_orcamento ?? "—"} />

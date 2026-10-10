@@ -29,15 +29,16 @@ A aplicação usa o Workshop **SargLab — IA no Dia a Dia** / apresentação co
 ## Estrutura
 
 ```text
-gestao-inteligente-reconstruido/
+gestao-inteligente/
 ├── backend/
 │   ├── main.py
 │   ├── models.py
 │   ├── database.py
-│   ├── requirements.txt
+│   ├── requirements.txt / requirements-dev.txt
 │   ├── .env.example
 │   ├── alembic.ini
 │   ├── migrations/
+│   ├── tests/            # suíte pytest (migrations, auth, RBAC, fluxos)
 │   ├── uploads/
 │   └── seed_sarglab.py
 ├── frontend/
@@ -45,8 +46,11 @@ gestao-inteligente-reconstruido/
 │   ├── package.json
 │   ├── package-lock.json
 │   └── .env.example
-├── docs/
+├── scripts/              # smoke_test, docker_check, update_frontend_deps, backup/restore
+├── docs/                 # DEPLOY, HOMOLOGACAO, AUDITORIA, ROADMAP, VALIDACAO...
+├── .github/workflows/ci.yml
 ├── CHECKLIST.md
+├── CHANGELOG.md
 ├── docker-compose.yml
 └── README.md
 ```
@@ -90,7 +94,7 @@ python -m pip install -r requirements.txt
 
 **O que faz:** instala FastAPI, SQLAlchemy, Alembic, driver PostgreSQL, Argon2 e JWT.
 
-Crie seu `.env` a partir de `.env.example` e preencha `DATABASE_URL` e `JWT_SECRET_KEY`. Para gerar uma chave forte:
+Crie seu `.env` a partir de `.env.example` e preencha `DATABASE_URL` e `JWT_SECRET_KEY` (em produção use `APP_ENV=production`: a chave precisa ter ao menos 32 caracteres). Para gerar uma chave forte:
 
 ```powershell
 python -c "import secrets; print(secrets.token_urlsafe(48))"
@@ -209,7 +213,7 @@ A Área do Aluno verifica no backend se `Enrollment.lead_id == User.lead_id`; tr
 
 `POST /api/course-contents/upload` aceita arquivos administrativos de até **50 MB** e grava em `backend/uploads/`.
 
-Isso é adequado para desenvolvimento, homologação e instalações simples. Em produção com múltiplas instâncias, substitua por storage persistente (por exemplo, Supabase Storage/S3 compatível) e configure `UPLOAD_BASE_URL`.
+Isso é adequado para desenvolvimento, homologação e instalações simples (instância única com volume persistente). **Os arquivos são servidos em `/uploads/<uuid>` sem autenticação** — limitação aceita da primeira entrega, detalhada em `docs/DEPLOY.md` §5. Em produção com múltiplas instâncias ou material sensível, substitua por storage privado (Supabase Storage/S3 compatível) e configure `UPLOAD_BASE_URL`.
 
 ## Workshop SargLab atualizado
 
@@ -242,15 +246,23 @@ O repositório funciona sem fornecedor externo de IA ou mensageria. A camada Omn
 
 Para envio/recebimento real por WhatsApp/e-mail e para IA generativa externa, ainda são necessárias contas, chaves e webhooks do fornecedor escolhido. Esses segredos não podem ser embutidos no ZIP.
 
-## Verificações da reconstrução
+## Testes e verificação
 
-A reconstrução foi validada com:
+```powershell
+cd backend
+python -m pip install -r requirements-dev.txt
+python -m pytest
+```
 
-- compilação Python (`py_compile`);
-- migration Alembic em banco SQLite limpo;
-- smoke test da API com criação de admin, login, campanha, Lead, interação, produto, curso, conteúdo, venda, matrícula, analytics e RBAC;
-- teste de suspensão/restauração de matrícula por situação financeira;
-- análise sintática de todos os arquivos TypeScript/TSX;
-- varredura para impedir envio de `.env`, `.venv`, `node_modules`, `.next`, bancos locais e caches.
+**O que faz:** aplica as migrations em um SQLite temporário (`alembic upgrade head`), confere que os models não divergem do schema e executa os testes de autenticação, RBAC, ownership do aluno, CRM, vendas → matrícula → financeiro → LMS, uploads e validações.
 
-O build completo do Next deve ser executado após `npm ci` no ambiente com acesso ao registry npm.
+No frontend:
+
+```powershell
+cd frontend
+npm ci
+npm run typecheck
+npm run build
+```
+
+O CI (`.github/workflows/ci.yml`) roda os dois conjuntos, a auditoria de dependências de produção e a validação Docker (`scripts/docker_check.sh`) a cada push. Veja `docs/VALIDACAO.md` para o que já foi verificado e o que precisa ser executado na homologação, `docs/AUDITORIA.md` para o relatório da auditoria e `docs/HOMOLOGACAO.md` para o checklist final.

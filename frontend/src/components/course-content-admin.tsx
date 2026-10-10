@@ -84,11 +84,18 @@ export default function CourseContentAdmin({
 
 
   const [
-    contents,
+    loadedContents,
     setContents,
   ] = useState<CourseContent[]>(
     []
   );
+
+  // Sem curso selecionado não há conteúdos para mostrar. Derivado no render
+  // (em vez de setContents([]) dentro de um effect).
+  const contents =
+    selectedCourseId
+      ? loadedContents
+      : [];
 
 
   const [
@@ -167,42 +174,50 @@ export default function CourseContentAdmin({
   ] = useState(false);
 
 
-  async function handleUnauthorized() {
-    try {
-      await fetch(
-        "/api/session/logout",
-        {
-          method: "POST",
+  const handleUnauthorized =
+    useCallback(
+      async () => {
+        try {
+          await fetch(
+            "/api/session/logout",
+            {
+              method: "POST",
+            }
+          );
+        } catch {
+          // Mesmo se a rota de logout
+          // falhar, limpamos a sessão local.
         }
-      );
-    } catch {
-      // Mesmo se a rota de logout
-      // falhar, limpamos a sessão local.
-    }
 
-    logout();
+        logout();
 
-    router.replace(
-      "/login"
+        router.replace(
+          "/login"
+        );
+
+        router.refresh();
+      },
+      [logout, router]
     );
 
-    router.refresh();
-  }
 
+  const handleForbidden =
+    useCallback(
+      () => {
+        setMensagem(
+          "Seu perfil não possui permissão para administrar cursos."
+        );
 
-  function handleForbidden() {
-    setMensagem(
-      "Seu perfil não possui permissão para administrar cursos."
+        if (user) {
+          router.replace(
+            getHomeForRole(
+              user.role
+            )
+          );
+        }
+      },
+      [router, user]
     );
-
-    if (user) {
-      router.replace(
-        getHomeForRole(
-          user.role
-        )
-      );
-    }
-  }
 
 
   const loadContents =
@@ -257,29 +272,65 @@ export default function CourseContentAdmin({
         }
       },
       [
-        router,
-        user,
-        logout,
+        handleForbidden,
+        handleUnauthorized,
       ]
     );
 
 
   useEffect(() => {
     if (!selectedCourseId) {
-      setContents([]);
       return;
     }
 
+    let cancelled = false;
 
-    loadContents(
-      Number(
-        selectedCourseId
-      )
-    );
+    clientApi(
+      `/api/courses/${Number(selectedCourseId)}/contents`
+    )
+      .then(async (response) => {
+        if (cancelled) {
+          return;
+        }
 
+        if (response.status === 401) {
+          await handleUnauthorized();
+          return;
+        }
+
+        if (response.status === 403) {
+          handleForbidden();
+          return;
+        }
+
+        if (!response.ok) {
+          setMensagem(
+            "Não foi possível carregar os conteúdos."
+          );
+          return;
+        }
+
+        const data = await response.json();
+
+        if (!cancelled) {
+          setContents(data);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setMensagem(
+            "Não foi possível conectar ao servidor."
+          );
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [
     selectedCourseId,
-    loadContents,
+    handleForbidden,
+    handleUnauthorized,
   ]);
 
 
