@@ -119,9 +119,9 @@ export default function LeadForm({ campaigns }: Props) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mb-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+    <form onSubmit={handleSubmit} className="mb-6 rounded-card border border-slate-200 bg-white p-6 shadow-sm">
       <div className="mb-6">
-        <h2 className="text-lg font-bold text-slate-950">Cadastrar novo Lead</h2>
+        <h2 className="text-lg font-bold text-midnight">Cadastrar novo Lead</h2>
         <p className="mt-1 text-sm text-slate-500">
           Pipeline SargLab: Lead → Contato realizado → Interessado → Reunião → Proposta → Negociação → Fechado → Pós-venda.
         </p>
@@ -157,15 +157,15 @@ export default function LeadForm({ campaigns }: Props) {
       </div>
 
       <div className="mt-6 flex items-center gap-4">
-        <button type="submit" disabled={salvando} className="flex items-center gap-2 rounded-xl bg-emerald-500 px-5 py-3 text-sm font-bold text-slate-950 transition hover:bg-emerald-400 disabled:opacity-50"><Plus size={18} />{salvando ? "Salvando..." : "Cadastrar Lead"}</button>
+        <button type="submit" disabled={salvando} className="flex items-center gap-2 rounded-xl bg-cobalt-500 px-5 py-3 text-sm font-bold text-white transition hover:bg-cobalt-600 disabled:opacity-50"><Plus size={18} />{salvando ? "Salvando..." : "Cadastrar Lead"}</button>
         {mensagem && <p className="text-sm text-slate-600">{mensagem}</p>}
       </div>
     </form>
   );
 }
 
-const inputClass = "w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-emerald-500";
+const inputClass = "w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-cobalt-500";
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return <div><label className="mb-2 block text-sm font-medium text-slate-700">{label}</label>{children}</div>;
+  return <label className="block"><span className="mb-2 block text-sm font-medium text-slate-700">{label}</span>{children}</label>;
 }

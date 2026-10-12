@@ -214,6 +214,23 @@ class ContentProgress(Base):
     criado_em: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, nullable=False)
 
 
+class EmailLog(Base):
+    """Registro de tentativas de e-mail automático (sucesso, falha ou ignorado)."""
+
+    __tablename__ = "email_logs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    lead_id: Mapped[int | None] = mapped_column(
+        ForeignKey("leads.id", ondelete="CASCADE"), nullable=True, index=True
+    )
+    destinatario: Mapped[str] = mapped_column(String(255), nullable=False)
+    template: Mapped[str] = mapped_column(String(50), nullable=False)
+    provider: Mapped[str] = mapped_column(String(30), nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False)
+    detalhe: Mapped[str | None] = mapped_column(Text, nullable=True)
+    criado_em: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, nullable=False)
+
+
 # =========================================================
 # USUÁRIOS / RBAC
 # =========================================================

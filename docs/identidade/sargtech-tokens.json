@@ -1,0 +1,30 @@
+{
+  "brand": {
+    "midnight": "#0A1020",
+    "cobalt": "#3457FF",
+    "indigo": "#6558F5",
+    "ice": "#F5F7FC",
+    "white": "#FFFFFF",
+    "steel": "#7B879B",
+    "border": "#DEE4EF",
+    "success": "#16875A",
+    "warning": "#B56A00",
+    "danger": "#C43D4B"
+  },
+  "typography": {
+    "ui": [
+      "Inter",
+      "Manrope",
+      "system-ui",
+      "Segoe UI",
+      "sans-serif"
+    ]
+  },
+  "radius": {
+    "sm": 8,
+    "md": 12,
+    "lg": 18
+  },
+  "spacing_base": 4,
+  "notes": "SARGTECH v0.1. Distinct from SargLab; do not reuse SargLab petrol #0F3D4C, cream #F7F5F0 or orange #F28C28 as brand colors."
+}

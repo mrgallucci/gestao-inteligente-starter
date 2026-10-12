@@ -1,0 +1,92 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  backend:
+    name: Backend (migrations + testes)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: backend/requirements-dev.txt
+      - run: python -m pip install -r requirements-dev.txt
+      - name: Compilação
+        run: python -m compileall -q .
+      - name: Testes (inclui alembic upgrade head + checagem de drift dos models)
+        run: python -m pytest
+
+  frontend:
+    name: Frontend (install, audit, typecheck, lint, build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      # Falha com vulnerabilidade high/critical em dependências de PRODUÇÃO.
+      - run: npm audit --omit=dev --audit-level=high
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+
+  docker:
+    name: Docker (config, build, up, smoke)
+    runs-on: ubuntu-latest
+    needs: [backend]
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose version
+      - run: ./scripts/docker_check.sh
+
+  e2e:
+    name: E2E Playwright (gate obrigatório)
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Sobe a stack com banco descartável
+        run: |
+          cp backend/.env.example backend/.env
+          # JWT exclusivamente temporário (banco/stack descartável de CI). Persistido em
+          # GITHUB_ENV para que os steps seguintes ("Logs" e "Derruba a stack") também
+          # tenham a variável exigida pelo docker-compose.ci.yml. Nunca é commitado.
+          CI_JWT_SECRET="$(head -c 48 /dev/urandom | base64 | tr -d '\n=+/')"
+          echo "::add-mask::$CI_JWT_SECRET"
+          echo "CI_JWT_SECRET=$CI_JWT_SECRET" >> "$GITHUB_ENV"
+          export CI_JWT_SECRET
+          docker compose -f docker-compose.yml -f docker-compose.ci.yml up --build -d --wait
+      - name: Playwright
+        working-directory: e2e
+        run: |
+          # Instalação determinística: exige e2e/package-lock.json versionado.
+          test -f package-lock.json || { echo "FALTA e2e/package-lock.json: rode 'cd e2e && npm install --package-lock-only' e faça commit do lockfile."; exit 1; }
+          npm ci
+          npm run install:browsers
+          npm test
+      - name: Logs em caso de falha
+        if: failure()
+        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml logs --tail=80
+      - name: Derruba a stack
+        if: always()
+        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml down -v

@@ -66,8 +66,11 @@ export async function POST(
 
         path: "/",
 
+        // Mesma validade do JWT emitido pelo backend (fallback: 8 horas).
         maxAge:
-          60 * 60 * 8,
+          typeof data.expires_in === "number" && data.expires_in > 0
+            ? data.expires_in
+            : 60 * 60 * 8,
       }
     );
 

@@ -14,11 +14,11 @@ export default function MetricCard({
   icon: Icon,
 }: Props) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="rounded-card border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex items-start justify-between">
         <div>
           <p className="text-sm font-medium text-slate-500">{title}</p>
-          <p className="mt-2 text-3xl font-bold tracking-tight text-slate-950">
+          <p className="mt-2 text-3xl font-bold tracking-tight text-midnight">
             {value}
           </p>
         </div>

@@ -417,9 +417,9 @@ export default function StudentCourse({
     <div className="mx-auto max-w-6xl">
 
       {/* CABEÇALHO DO CURSO */}
-      <header className="rounded-3xl bg-slate-950 p-8 text-white">
+      <header className="rounded-3xl bg-midnight p-8 text-white">
 
-        <p className="text-sm font-semibold uppercase tracking-wider text-emerald-400">
+        <p className="text-sm font-semibold uppercase tracking-wider text-cobalt-400">
           Área do aluno
         </p>
 
@@ -465,7 +465,7 @@ export default function StudentCourse({
           <div className="h-3 overflow-hidden rounded-full bg-slate-700">
 
             <div
-              className="h-full rounded-full bg-emerald-400 transition-all duration-300"
+              className="h-full rounded-full bg-cobalt-400 transition-all duration-300"
               style={{
                 width:
                   `${Math.min(
@@ -493,7 +493,7 @@ export default function StudentCourse({
 
       {/* ERROS */}
       {error && (
-        <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <div className="mt-6 rounded-card border border-red-200 bg-red-50 p-4 text-sm text-red-700">
           {error}
         </div>
       )}
@@ -502,7 +502,7 @@ export default function StudentCourse({
       {/* CONTEÚDOS */}
       <section className="mt-6">
 
-        <h2 className="text-xl font-bold text-slate-950">
+        <h2 className="text-xl font-bold text-midnight">
           Conteúdo do curso
         </h2>
 
@@ -529,7 +529,7 @@ export default function StudentCourse({
               return (
                 <div
                   key={content.id}
-                  className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+                  className="overflow-hidden rounded-card border border-slate-200 bg-white shadow-sm"
                 >
 
                   {/* CABEÇALHO DO CONTEÚDO */}
@@ -593,7 +593,7 @@ export default function StudentCourse({
                       {concluded && (
 
                         <CheckCircle2
-                          className="text-emerald-500"
+                          className="text-cobalt-500"
                           size={22}
                         />
 
@@ -638,7 +638,7 @@ export default function StudentCourse({
                     <div className="h-2 overflow-hidden rounded-full bg-slate-100">
 
                       <div
-                        className="h-full rounded-full bg-emerald-500 transition-all duration-300"
+                        className="h-full rounded-full bg-cobalt-500 transition-all duration-300"
                         style={{
                           width:
                             `${Math.min(
@@ -656,7 +656,7 @@ export default function StudentCourse({
                   {/* CONTEÚDO SELECIONADO */}
                   {selected && (
 
-                    <div className="border-t border-slate-200 bg-slate-50 p-5">
+                    <div className="border-t border-slate-200 bg-ice p-5">
 
                       <p className="font-semibold text-slate-900">
                         {content.titulo}
@@ -684,7 +684,7 @@ export default function StudentCourse({
                           }
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="mt-4 inline-flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+                          className="mt-4 inline-flex items-center gap-2 rounded-xl bg-midnight px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
                         >
                           <ExternalLink
                             size={16}
@@ -743,7 +743,7 @@ export default function StudentCourse({
                                 }
                                 className={
                                   progress === 100
-                                    ? "rounded-lg bg-emerald-500 px-4 py-2 text-sm font-bold text-slate-950 transition hover:bg-emerald-400"
+                                    ? "rounded-lg bg-cobalt-500 px-4 py-2 text-sm font-bold text-white transition hover:bg-cobalt-600"
                                     : "rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
                                 }
                               >
@@ -774,7 +774,7 @@ export default function StudentCourse({
 
         {contents.length === 0 && (
 
-          <div className="mt-6 rounded-2xl border border-dashed border-slate-300 p-10 text-center">
+          <div className="mt-6 rounded-card border border-dashed border-slate-300 p-10 text-center">
 
             <BookOpen
               size={32}

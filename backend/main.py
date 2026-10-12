@@ -1,4 +1,5 @@
 import os
+import re
 import uuid
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
@@ -6,8 +7,10 @@ from decimal import Decimal
 
 import jwt
 
-from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
+from fastapi import BackgroundTasks, Depends, FastAPI, File, HTTPException, UploadFile
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.security import (
     HTTPAuthorizationCredentials,
@@ -15,20 +18,22 @@ from fastapi.security import (
 )
 
 from jwt.exceptions import InvalidTokenError
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerificationError, VerifyMismatchError
 
 from sqlalchemy import case, func, text
 from sqlalchemy.orm import Session
 
-from database import engine, get_db
+from database import SessionLocal, get_db
+import email_service
 
 from models import (
     Campaign,
     ContentProgress,
     Course,
     CourseContent,
+    EmailLog,
     Enrollment,
     Interaction,
     Lead,
@@ -45,28 +50,72 @@ from models import (
 
 app = FastAPI(
     title="Gestão Inteligente API — SARGTECH",
-    version="2.0.0",
+    version="2.1.0",
 )
 
 
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+APP_ENV = os.getenv("APP_ENV", "development").strip().lower()
+IS_PRODUCTION = APP_ENV == "production"
+
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000").rstrip("/")
 UPLOAD_DIR = Path(__file__).resolve().parent / "uploads"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 UPLOAD_BASE_URL = os.getenv("UPLOAD_BASE_URL", "http://127.0.0.1:8000/uploads").rstrip("/")
 
+
+def _build_cors_origins() -> list[str]:
+    """Origens permitidas no CORS.
+
+    O navegador fala com o Next.js (BFF), então a API em si só precisa aceitar
+    o FRONTEND_URL. Origens adicionais (por exemplo, a página do e-book) entram
+    por CORS_ORIGINS, separadas por vírgula. Em desenvolvimento, as portas do
+    Live Server (5500) continuam liberadas; em produção, não.
+    """
+    origins = {FRONTEND_URL}
+    for item in os.getenv("CORS_ORIGINS", "").split(","):
+        item = item.strip().rstrip("/")
+        if item:
+            origins.add(item)
+    if not IS_PRODUCTION:
+        origins.update({"http://localhost:5500", "http://127.0.0.1:5500"})
+    return sorted(origins)
+
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=list({
-        FRONTEND_URL,
-        "http://localhost:5500",
-        "http://127.0.0.1:5500",
-    }),
+    allow_origins=_build_cors_origins(),
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request, exc: RequestValidationError):
+    """Erros de validação (422) com `detail` em texto.
+
+    O padrão do FastAPI devolve `detail` como lista de objetos; o frontend exibe
+    `detail` diretamente na tela, então precisa de uma string.
+    """
+    mensagens: list[str] = []
+    for erro in exc.errors():
+        caminho = [
+            str(parte)
+            for parte in erro.get("loc", ())
+            if parte not in ("body", "query", "path")
+        ]
+        campo = ".".join(caminho)
+        mensagem = str(erro.get("msg", "valor inválido"))
+        if mensagem.startswith("Value error, "):
+            mensagem = mensagem[len("Value error, "):]
+        mensagens.append(f"{campo}: {mensagem}" if campo else mensagem)
+
+    return JSONResponse(
+        status_code=422,
+        content={"detail": "Dados inválidos — " + "; ".join(mensagens)},
+    )
 
 
 # =========================================================
@@ -98,6 +147,21 @@ if not JWT_SECRET_KEY:
     raise RuntimeError(
         "JWT_SECRET_KEY não encontrada no .env"
     )
+
+_JWT_SECRET_PLACEHOLDER = "troque-por-uma-chave-secreta-forte"
+
+if IS_PRODUCTION and (
+    JWT_SECRET_KEY == _JWT_SECRET_PLACEHOLDER or len(JWT_SECRET_KEY) < 32
+):
+    raise RuntimeError(
+        "JWT_SECRET_KEY insegura para APP_ENV=production: use um valor "
+        "aleatório com pelo menos 32 caracteres "
+        "(python -c \"import secrets; print(secrets.token_urlsafe(48))\")."
+    )
+
+# Hash descartável usado para igualar o tempo de resposta do login quando o
+# e-mail não existe (evita enumeração de usuários por tempo de resposta).
+_DUMMY_PASSWORD_HASH = PASSWORD_HASHER.hash("senha-descartavel-sem-uso")
 
 
 bearer_scheme = HTTPBearer(
@@ -137,6 +201,32 @@ STATUS_ORDEM = [
 
 CONVERTED_STATUSES = {"Fechado", "Pós-venda"}
 PAYMENT_STATUSES = {"Pago", "Pendente", "Cancelado", "Reembolsado"}
+TIPOS_CLIENTE = {"B2B", "B2C"}
+
+_EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+def _clean_text(value: str | None) -> str | None:
+    """Remove espaços nas pontas; texto vazio vira None."""
+    if value is None:
+        return None
+    value = value.strip()
+    return value or None
+
+
+def _validate_email(value: str | None) -> str | None:
+    value = _clean_text(value)
+    if value is not None and not _EMAIL_PATTERN.match(value):
+        raise ValueError("E-mail inválido.")
+    return value
+
+
+def _validate_http_url(value: str | None) -> str | None:
+    """Aceita apenas links http(s); bloqueia esquemas como javascript: e data:."""
+    value = _clean_text(value)
+    if value is not None and not re.match(r"^https?://\S+$", value, re.IGNORECASE):
+        raise ValueError("A URL deve começar com http:// ou https://.")
+    return value
 
 
 # =========================================================
@@ -145,13 +235,13 @@ PAYMENT_STATUSES = {"Pago", "Pendente", "Cancelado", "Reembolsado"}
 
 
 class LeadCreate(BaseModel):
-    nome: str
-    origem: str
-    objetivo: str
+    nome: str = Field(min_length=1, max_length=150)
+    origem: str = Field(min_length=1, max_length=100)
+    objetivo: str = Field(min_length=1, max_length=255)
     status: str = "Lead"
-    interesse: str = "Médio"
+    interesse: str = Field(default="Médio", min_length=1, max_length=50)
 
-    idade: int | None = None
+    idade: int | None = Field(default=None, ge=0, le=120)
     genero: str | None = None
     cidade: str | None = None
     faixa_orcamento: str | None = None
@@ -164,7 +254,7 @@ class LeadCreate(BaseModel):
     telefone: str | None = None
     consentimento_contato: bool = False
     segmento: str | None = None
-    tamanho_equipe: int | None = None
+    tamanho_equipe: int | None = Field(default=None, ge=0)
     dor_gatilho: str | None = None
     proxima_acao: str | None = None
     proxima_acao_em: datetime | None = None
@@ -173,6 +263,26 @@ class LeadCreate(BaseModel):
     oferta_interesse: str | None = None
 
     campaign_id: int | None = None
+
+    @field_validator("nome", "origem", "objetivo", "interesse")
+    @classmethod
+    def _strip_required_text(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Campo obrigatório.")
+        return value
+
+    @field_validator("tipo_cliente")
+    @classmethod
+    def _validate_tipo_cliente(cls, value: str) -> str:
+        if value not in TIPOS_CLIENTE:
+            raise ValueError("Tipo de cliente deve ser B2B ou B2C.")
+        return value
+
+    @field_validator("email")
+    @classmethod
+    def _validate_lead_email(cls, value: str | None) -> str | None:
+        return _validate_email(value)
 
 
 class LeadUpdate(LeadCreate):
@@ -184,18 +294,34 @@ class LeadStatusUpdate(BaseModel):
 
 
 class InteractionCreate(BaseModel):
-    tipo: str
-    descricao: str
+    tipo: str = Field(min_length=1, max_length=50)
+    descricao: str = Field(min_length=1)
 
-    resultado: str | None = None
+    resultado: str | None = Field(default=None, max_length=100)
     follow_up_em: datetime | None = None
+
+    @field_validator("tipo", "descricao")
+    @classmethod
+    def _strip_required_text(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Campo obrigatório.")
+        return value
 
 
 class ProductCreate(BaseModel):
-    nome: str
+    nome: str = Field(min_length=1, max_length=150)
     descricao: str | None = None
-    preco: Decimal
+    preco: Decimal = Field(ge=0, max_digits=10, decimal_places=2)
     ativo: bool = True
+
+    @field_validator("nome")
+    @classmethod
+    def _strip_nome(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Nome é obrigatório.")
+        return value
 
 
 class SaleCreate(BaseModel):
@@ -203,7 +329,7 @@ class SaleCreate(BaseModel):
     product_id: int
     quantidade: int = 1
 
-    forma_pagamento: str
+    forma_pagamento: str = Field(min_length=1, max_length=50)
     status_pagamento: str = "Pago"
 
 
@@ -212,10 +338,10 @@ class SalePaymentStatusUpdate(BaseModel):
 
 
 class CampaignCreate(BaseModel):
-    nome: str
-    canal: str
+    nome: str = Field(min_length=1, max_length=150)
+    canal: str = Field(min_length=1, max_length=80)
     descricao: str | None = None
-    custo: Decimal = Decimal("0")
+    custo: Decimal = Field(default=Decimal("0"), ge=0, max_digits=12, decimal_places=2)
     ativo: bool = True
     utm_source: str | None = None
     utm_medium: str | None = None
@@ -224,33 +350,58 @@ class CampaignCreate(BaseModel):
 
 class CourseCreate(BaseModel):
     product_id: int
-    nome: str
+    nome: str = Field(min_length=1, max_length=150)
     descricao: str | None = None
     ativo: bool = True
+
+    @field_validator("nome")
+    @classmethod
+    def _strip_course_nome(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Nome é obrigatório.")
+        return value
+
+    @field_validator("descricao")
+    @classmethod
+    def _strip_course_descricao(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return value.strip() or None
 
 
 class CourseContentCreate(BaseModel):
-    titulo: str
+    titulo: str = Field(min_length=1, max_length=200)
     tipo: str
-    ordem: int
+    ordem: int = Field(ge=0)
 
-    duracao_minutos: int | None = None
+    duracao_minutos: int | None = Field(default=None, ge=0)
     descricao: str | None = None
     url_conteudo: str | None = None
 
     ativo: bool = True
+
+    @field_validator("url_conteudo")
+    @classmethod
+    def _validate_url(cls, value: str | None) -> str | None:
+        return _validate_http_url(value)
 
 
 class CourseContentUpdate(BaseModel):
-    titulo: str
+    titulo: str = Field(min_length=1, max_length=200)
     tipo: str
-    ordem: int
+    ordem: int = Field(ge=0)
 
-    duracao_minutos: int | None = None
+    duracao_minutos: int | None = Field(default=None, ge=0)
     descricao: str | None = None
     url_conteudo: str | None = None
 
     ativo: bool = True
+
+    @field_validator("url_conteudo")
+    @classmethod
+    def _validate_url(cls, value: str | None) -> str | None:
+        return _validate_http_url(value)
 
 
 class ContentProgressUpdate(BaseModel):
@@ -482,6 +633,62 @@ def validate_enrollment_access(
 
 
 # =========================================================
+# REGRAS DE VENDA → LEAD → MATRÍCULA
+# =========================================================
+
+
+def mark_lead_closed_after_payment(lead: Lead | None) -> None:
+    """Venda paga leva o Lead a "Fechado", mas nunca faz o funil regredir.
+
+    Um Lead que já está em "Pós-venda" permanece em "Pós-venda".
+    """
+    if lead is not None and lead.status != "Pós-venda":
+        lead.status = "Fechado"
+
+
+def has_other_paid_sale_for_course(
+    db: Session,
+    lead_id: int,
+    product_id: int,
+    exclude_sale_id: int | None = None,
+) -> bool:
+    """Existe outra venda Paga do mesmo produto (curso) para o mesmo Lead?
+
+    Cada curso está ligado a um único produto, então vendas pagas do mesmo
+    produto para o mesmo Lead dão direito à mesma matrícula.
+    """
+    query = db.query(Sale.id).filter(
+        Sale.lead_id == lead_id,
+        Sale.product_id == product_id,
+        Sale.status_pagamento == "Pago",
+    )
+
+    if exclude_sale_id is not None:
+        query = query.filter(Sale.id != exclude_sale_id)
+
+    return query.first() is not None
+
+
+def restore_enrollment_access(enrollment: Enrollment) -> None:
+    """Reativa uma matrícula suspensa preservando o estado acadêmico.
+
+    A suspensão só troca o status; as datas de acesso/conclusão e o progresso
+    dos conteúdos continuam gravados. O status volta coerente com eles:
+    "Concluído" se o curso foi concluído, "Em andamento" se já houve acesso e
+    "Acesso liberado" se o aluno ainda não acessou.
+    """
+    if enrollment.status != "Acesso suspenso":
+        return
+
+    if enrollment.concluido_em is not None:
+        enrollment.status = "Concluído"
+    elif enrollment.primeiro_acesso_em is not None:
+        enrollment.status = "Em andamento"
+    else:
+        enrollment.status = "Acesso liberado"
+
+
+# =========================================================
 # FUNÇÕES AUXILIARES LMS
 # =========================================================
 
@@ -627,9 +834,17 @@ def health():
 def database_health(
     db: Session = Depends(get_db),
 ):
-    result = db.execute(
-        text("SELECT 1")
-    ).scalar()
+    try:
+        result = db.execute(
+            text("SELECT 1")
+        ).scalar()
+    except Exception:
+        # 503 permite que o orquestrador/monitor detecte banco fora do ar
+        # sem expor detalhes da conexão na resposta.
+        raise HTTPException(
+            status_code=503,
+            detail="Banco de dados indisponível.",
+        )
 
     return {
         "database": "online",
@@ -735,6 +950,13 @@ def login(
     )
 
     if not user:
+        # Executa uma verificação descartável para que a resposta demore o
+        # mesmo tempo de um e-mail existente com senha errada.
+        try:
+            PASSWORD_HASHER.verify(_DUMMY_PASSWORD_HASH, data.senha)
+        except (VerifyMismatchError, VerificationError, InvalidHashError):
+            pass
+
         raise HTTPException(
             status_code=401,
             detail=(
@@ -774,6 +996,7 @@ def login(
     return {
         "access_token": token,
         "token_type": "bearer",
+        "expires_in": ACCESS_TOKEN_EXPIRE_MINUTES * 60,
 
         "user": {
             "id": user.id,
@@ -1191,8 +1414,88 @@ def dashboard_summary(
 
 
 # =========================================================
+# E-MAIL PÓS E-BOOK
+# =========================================================
+
+
+def send_ebook_delivery_email(lead_id: int) -> None:
+    """Envia o e-mail de entrega do material e registra o resultado.
+
+    Usa sessão própria (executa após a resposta). Nunca levanta exceção.
+    """
+    try:
+        settings = email_service.load_settings()
+        if not settings.enabled:
+            return  # feature flag desligada: nada é enviado nem registrado
+
+        with SessionLocal() as db:
+            lead = db.query(Lead).filter(Lead.id == lead_id).first()
+            if not lead or not lead.email:
+                return
+
+            result = email_service.send_template(
+                template=email_service.TEMPLATE_DELIVERY,
+                nome=lead.nome,
+                email=lead.email,
+                consentimento=lead.consentimento_contato,
+                settings=settings,
+            )
+            db.add(
+                EmailLog(
+                    lead_id=lead.id,
+                    destinatario=lead.email,
+                    template=result.template,
+                    provider=result.provider,
+                    status=result.status,
+                    detalhe=result.detail,
+                )
+            )
+            if result.status == "enviado":
+                db.add(
+                    Interaction(
+                        lead_id=lead.id,
+                        tipo="E-mail automático",
+                        descricao="Entrega do e-book enviada por e-mail automático.",
+                        resultado="Enviado",
+                    )
+                )
+            db.commit()
+    except Exception:  # noqa: BLE001 - nunca pode afetar o fluxo do Lead
+        email_service.logger.exception("Falha inesperada na automação de e-mail do lead %s", lead_id)
+
+
+@app.get("/api/email-logs")
+def list_email_logs(
+    current_user: User = Depends(require_roles("admin")),
+    db: Session = Depends(get_db),
+):
+    rows = db.query(EmailLog).order_by(EmailLog.id.desc()).limit(100).all()
+    return [
+        {
+            "id": row.id,
+            "lead_id": row.lead_id,
+            "destinatario": row.destinatario,
+            "template": row.template,
+            "provider": row.provider,
+            "status": row.status,
+            "detalhe": row.detalhe,
+            "criado_em": row.criado_em,
+        }
+        for row in rows
+    ]
+
+
+# =========================================================
 # LEADS
 # =========================================================
+
+# Resposta pública ÚNICA (mesmo HTTP 201 e mesmo corpo) para e-mail novo e e-mail já
+# existente: impede enumeração de e-mails cadastrados. Não incluir id, nome, status ou
+# qualquer flag created/reused aqui.
+EBOOK_PUBLIC_RESPONSE = {
+    "mensagem": "Solicitação registrada com sucesso. Verifique seu e-mail.",
+}
+
 
 @app.post(
     "/api/public/leads/ebook",
@@ -1200,6 +1503,7 @@ def dashboard_summary(
 )
 def create_ebook_lead(
     data: EbookLeadCreate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ):
     nome = data.nome.strip()
@@ -1232,10 +1536,23 @@ def create_ebook_lead(
     )
 
     if lead_existente:
-        raise HTTPException(
-            status_code=409,
-            detail="Lead já cadastrado.",
+        # E-mail já conhecido: NÃO cria duplicata e NÃO bloqueia o fluxo. Reutiliza o
+        # Lead, registra o novo download na linha do tempo e dispara o e-mail conforme
+        # o consentimento. A resposta é idêntica à de e-mail novo (EBOOK_PUBLIC_RESPONSE).
+        lead_existente.consentimento_contato = True  # consentimento dado neste download
+        db.add(
+            Interaction(
+                lead_id=lead_existente.id,
+                tipo="Download e-book",
+                descricao="Novo download do e-book gratuito por este contato.",
+                resultado="Registrado",
+            )
         )
+        db.commit()
+
+        background_tasks.add_task(send_ebook_delivery_email, lead_existente.id)
+
+        return dict(EBOOK_PUBLIC_RESPONSE)
 
     novo_lead = Lead(
         nome=nome,
@@ -1273,13 +1590,11 @@ def create_ebook_lead(
     db.commit()
     db.refresh(novo_lead)
 
-    return {
-        "id": novo_lead.id,
-        "nome": novo_lead.nome,
-        "email": novo_lead.email,
-        "status": novo_lead.status,
-        "mensagem": "Lead cadastrado com sucesso.",
-    }
+    # E-mail pós-download: roda DEPOIS do commit e fora da requisição. Qualquer
+    # falha do provedor fica registrada, mas nunca desfaz nem bloqueia o Lead.
+    background_tasks.add_task(send_ebook_delivery_email, novo_lead.id)
+
+    return dict(EBOOK_PUBLIC_RESPONSE)
 
 @app.get("/api/leads")
 def list_leads(
@@ -1625,6 +1940,109 @@ def list_followups(
     return items
 
 
+def describe_sale_delivery(sale, course, enrollments_by_key) -> dict:
+    """Entrega de uma venda, separando TIPO de STATUS (2.1.0-rc.1).
+
+    - `entrega_tipo`: o que o produto entrega — "LMS" (produto com curso) ou None.
+    - `entrega_status`: situação real — "Acesso liberado", "Aguardando pagamento",
+      "Acesso suspenso", "Matrícula não gerada" (venda paga sem matrícula; estado de ATENÇÃO) ou
+      "Não aplicável" (produto sem curso, curso inativo ou venda cancelada/reembolsada
+      que nunca gerou acesso).
+    - `aviso`: texto de alerta quando há algo que o operador precisa saber (curso inativo).
+    """
+    base = {
+        "entrega_tipo": None,
+        "entrega_status": "Não aplicável",
+        "entrega_detalhe": "Este produto não libera curso.",
+        "aviso": None,
+        "curso_id": None,
+        "curso_nome": None,
+        "curso_ativo": None,
+        "matricula_status": None,
+    }
+    if course is None:
+        return base
+
+    base.update(
+        {
+            "entrega_tipo": "LMS",
+            "curso_id": course.id,
+            "curso_nome": course.nome,
+            "curso_ativo": course.ativo,
+        }
+    )
+    if not course.ativo:
+        base.update(
+            {
+                "entrega_status": "Não aplicável",
+                "entrega_detalhe": "O curso vinculado está inativo e não libera acesso.",
+                "aviso": "Curso inativo: a venda é válida, mas não gera matrícula.",
+            }
+        )
+        return base
+
+    enrollment = enrollments_by_key.get((sale.lead_id, course.id))
+    base["matricula_status"] = enrollment.status if enrollment else None
+    suspended = enrollment is not None and enrollment.status == "Acesso suspenso"
+
+    if sale.status_pagamento == "Pago":
+        if enrollment is None:
+            base.update(
+                {
+                    "entrega_status": "Matrícula não gerada",
+                    "entrega_detalhe": "Venda paga sem matrícula gerada (ex.: curso vinculado depois da venda).",
+                    "aviso": (
+                        "Atenção: esta venda paga não gerou matrícula. Não há concessão "
+                        "retroativa automática; a liberação depende de decisão operacional."
+                    ),
+                }
+            )
+        elif suspended:
+            base.update(
+                {
+                    "entrega_status": "Acesso suspenso",
+                    "entrega_detalhe": "Matrícula suspensa por outra venda cancelada/reembolsada.",
+                }
+            )
+        else:
+            base.update(
+                {
+                    "entrega_status": "Acesso liberado",
+                    "entrega_detalhe": f"Acesso ao curso “{course.nome}” liberado.",
+                }
+            )
+    elif sale.status_pagamento == "Pendente":
+        base.update(
+            {
+                "entrega_status": "Aguardando pagamento",
+                "entrega_detalhe": f"“{course.nome}” será liberado quando o pagamento for confirmado.",
+            }
+        )
+    else:  # Cancelado / Reembolsado
+        if suspended:
+            base.update(
+                {
+                    "entrega_status": "Acesso suspenso",
+                    "entrega_detalhe": f"Pagamento {sale.status_pagamento.lower()}: acesso suspenso.",
+                }
+            )
+        elif enrollment is not None:
+            base.update(
+                {
+                    "entrega_status": "Acesso liberado",
+                    "entrega_detalhe": "Acesso mantido por outra venda paga do mesmo curso.",
+                }
+            )
+        else:
+            base.update(
+                {
+                    "entrega_status": "Não aplicável",
+                    "entrega_detalhe": f"Pagamento {sale.status_pagamento.lower()}: não gerou acesso.",
+                }
+            )
+    return base
+
+
 # =========================================================
 # PRODUTOS
 # =========================================================
@@ -1635,13 +2053,29 @@ def list_products(
     current_user: User = Depends(require_roles("admin", "vendedor")),
     db: Session = Depends(get_db),
 ):
-    return (
-        db.query(Product)
-        .order_by(
-            Product.id.desc()
-        )
+    rows = (
+        db.query(Product, Course)
+        .outerjoin(Course, Course.product_id == Product.id)
+        .order_by(Product.id.desc())
         .all()
     )
+
+    return [
+        {
+            "id": product.id,
+            "nome": product.nome,
+            "descricao": product.descricao,
+            "preco": product.preco,
+            "ativo": product.ativo,
+            "criado_em": product.criado_em,
+            # Curso vinculado (relação 1 Produto → no máximo 1 Curso).
+            "curso_id": course.id if course else None,
+            "curso_nome": course.nome if course else None,
+            "curso_ativo": course.ativo if course else None,
+            "libera_lms": bool(course and course.ativo),
+        }
+        for product, course in rows
+    ]
 
 
 @app.post(
@@ -1700,6 +2134,14 @@ def list_sales(
         .all()
     )
 
+    courses_by_product = {
+        course.product_id: course for course in db.query(Course).all()
+    }
+    enrollments_by_key = {
+        (enrollment.lead_id, enrollment.course_id): enrollment
+        for enrollment in db.query(Enrollment).all()
+    }
+
     return [
         {
             "id": venda.id,
@@ -1733,6 +2175,12 @@ def list_sales(
 
             "criado_em":
                 venda.criado_em,
+
+            **describe_sale_delivery(
+                venda,
+                courses_by_product.get(venda.product_id),
+                enrollments_by_key,
+            ),
         }
         for venda, lead, produto
         in vendas
@@ -1834,7 +2282,7 @@ def create_sale(
         sale.status_pagamento
         == "Pago"
     ):
-        lead.status = "Fechado"
+        mark_lead_closed_after_payment(lead)
 
         curso = (
             db.query(Course)
@@ -1883,6 +2331,13 @@ def create_sale(
                     nova_matricula
                 )
 
+            else:
+                # Nova compra válida do mesmo curso restaura o acesso de uma
+                # matrícula suspensa, preservando o estado acadêmico.
+                restore_enrollment_access(
+                    matricula_existente
+                )
+
     db.commit()
     db.refresh(nova_venda)
 
@@ -1920,8 +2375,7 @@ def update_sale_payment_status(
 
     if next_status == "Pago":
         lead = db.query(Lead).filter(Lead.id == sale.lead_id).first()
-        if lead:
-            lead.status = "Fechado"
+        mark_lead_closed_after_payment(lead)
 
         if course:
             if not existing:
@@ -1931,11 +2385,19 @@ def update_sale_payment_status(
                     sale_id=sale.id,
                     status="Acesso liberado",
                 ))
-            elif existing.status == "Acesso suspenso":
-                existing.status = "Acesso liberado"
+            else:
+                restore_enrollment_access(existing)
 
     elif next_status in {"Cancelado", "Reembolsado"} and existing:
-        existing.status = "Acesso suspenso"
+        # O acesso só é suspenso se não restar outra venda Paga válida do
+        # mesmo curso para este Lead.
+        if not has_other_paid_sale_for_course(
+            db,
+            sale.lead_id,
+            sale.product_id,
+            exclude_sale_id=sale.id,
+        ):
+            existing.status = "Acesso suspenso"
 
     db.commit()
     db.refresh(sale)
@@ -3625,9 +4087,12 @@ def open_course_content(
         agora
     )
 
-    if (
-        enrollment.status
-        != "Concluído"
+    # Uma matrícula suspensa por cancelamento/reembolso só volta a ser liberada
+    # pela situação financeira (venda Paga). Abrir conteúdo, inclusive como
+    # admin, não pode reativá-la.
+    if enrollment.status not in (
+        "Concluído",
+        "Acesso suspenso",
     ):
         enrollment.status = (
             "Em andamento"
@@ -3823,7 +4288,12 @@ def update_content_progress(
     else:
         progresso_total = 0
 
-    if progresso_total >= 100:
+    if enrollment.status == "Acesso suspenso":
+        # Não altera status nem conclusão de matrícula suspensa (ver
+        # open_course_content): a liberação depende do financeiro.
+        pass
+
+    elif progresso_total >= 100:
         enrollment.status = (
             "Concluído"
         )

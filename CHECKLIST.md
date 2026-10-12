@@ -1,12 +1,12 @@
-# Checklist — Gestão Inteligente reconstruído
+# Checklist — Gestão Inteligente 2.1.0
 
-Legenda: ✅ concluído | 🔌 depende de provedor/credencial externo | 🚀 configuração de ambiente de publicação
+Legenda: ✅ concluído | 🔌 depende de provedor/credencial externo | 🚀 configuração de ambiente de publicação | 🧪 escrito, aguardando primeira execução
 
 ## Fundação
 - ✅ Next.js + React + TypeScript + Tailwind.
 - ✅ FastAPI + SQLAlchemy.
 - ✅ PostgreSQL/Supabase compatível.
-- ✅ Alembic restaurado com migration inicial completa.
+- ✅ Alembic: migration inicial + `9c4e1a7b2d10` (coluna `area_profissional` que faltava).
 - ✅ Utilitário `legacy_upgrade.py` para recuperar banco antigo quando o código/histórico de migrations foi perdido.
 - ✅ `.env.example` para backend e frontend.
 - ✅ Ambiente limpo: sem `.venv`, `node_modules`, `.next` ou segredos no pacote final.
@@ -87,3 +87,34 @@ Legenda: ✅ concluído | 🔌 depende de provedor/credencial externo | 🚀 con
 - ✅ Variáveis de ambiente para URL interna do backend e URLs públicas.
 - 🚀 Publicação efetiva exige domínio/host, banco e segredos da conta de produção.
 - 🚀 Storage persistente é recomendado para uploads em produção.
+
+## Entrega / homologação (RC 2.0.2-rc.3)
+- ✅ Auditoria técnica registrada em `docs/AUDITORIA.md`.
+- ✅ Suíte de backend executada em ambiente local: **162 passed, 0 failed, 1 warning não bloqueante**.
+- ✅ N1–N4 cobertas pelos 11 testes de regressão em `backend/tests/test_business_rules.py`.
+- ✅ Banco PostgreSQL/Alembic validado na 2.0.1: migration `9c4e1a7b2d10` aplicada e `alembic check` sem drift; a RC 2.0.2 não adiciona mudança de schema.
+- ✅ CI configurado com `pytest`, auditoria npm, typecheck, lint, build e job Docker.
+- ✅ Correções anteriores de ESLint validadas parcialmente; a homologação local encontrou 1 erro remanescente em `course-content-admin.tsx`, corrigido na rc.3 sem `eslint-disable`.
+- ✅ Dependências-alvo registradas: Next.js/`eslint-config-next` 16.3.8, `sharp` 0.35.5 e `source-map-js` 1.2.2.
+- ✅ Homologação local da rc.2: `npm audit --omit=dev --audit-level=high` = 0 vulnerabilidades; `npm run typecheck` = aprovado; `npm run build` = aprovado (22/22 rotas); `npm run lint` encontrou 1 erro remanescente, corrigido nesta rc.3.
+- 🧪 Reexecutar na rc.3: `npm ci`, `npm audit --omit=dev --audit-level=high`, `npm run typecheck`, `npm run lint`, `npm run build`.
+- 🧪 Ainda executar em ambiente com Docker: `scripts/docker_check.sh` / job `docker` do CI.
+- ✅ `scripts/update_frontend_deps.sh` corrigido para não remover devDependencies antes de typecheck/lint/build.
+- ✅ Compose com healthcheck, restart e rotação de logs; scripts de smoke test e backup/restauração.
+- ✅ Limitação do upload local documentada (`docs/DEPLOY.md` §5).
+- 🚀 Homologação com a operação real do SargLab (`docs/HOMOLOGACAO.md`).
+- Roadmap futuro separado em `docs/ROADMAP.md`.
+
+## 2.1.0-rc.5
+- ✅ Implementado: criação de Curso pela UI; vínculo Produto→Curso visível em Produtos e Vendas; coluna "Entrega".
+- ✅ Implementado: camada de e-mail desligada por padrão + `email_logs` (migration `b7d2f4a91c33`).
+- ✅ Implementado: script de limpeza com dry-run, aprovação por ID e transação.
+- ✅ Implementado: tokens SARGTECH v0.1, Kanban com "Salvando…" e rollback.
+- ✅ Validações automatizadas finais executadas e aprovadas no GitHub Actions (informado pela gerência):
+  - 1ª execução, run `38284823908`: Backend CI GREEN, Frontend CI GREEN, Docker CI GREEN, E2E Playwright GREEN (E2E ainda com `continue-on-error`).
+  - `continue-on-error` removido (commit `7c95834e72e512422ccf5047184f3542adbf46f3`): E2E passou a **gate obrigatório**.
+  - 2ª execução, run `38286043714`: Backend CI GREEN, Frontend CI GREEN, Docker CI GREEN, E2E Playwright GREEN, E2E gate obrigatório GREEN (stack descartável criada e derrubada; workflow GREEN).
+- 👤 Pendências de produção (não são falha da release 2.1.0): publicação/ambiente de produção; configuração de provedor de e-mail e URL comercial (e-mail segue desligado por padrão); limpeza real na cópia do banco (dry-run e aprovação por ID); decisões operacionais/de produção ainda abertas em `docs/DECISOES_2.1.0-rc.1.md` (itens C–H).
+
+## Status de release
+- ✅ **2.1.0 estável** (2026-10-12) — promovida da 2.1.0-rc.5 validada (runs `38284823908` e `38286043714`: Backend, Frontend, Docker e E2E Playwright verdes; E2E é gate obrigatório). Sem alteração funcional na promoção.

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 512 512" role="img" aria-label="SARGTECH symbol">
+<rect width="512" height="512" rx="112" fill="#0A1020"/>
+<g fill="none" stroke="#6F83FF" stroke-width="54" stroke-linecap="square" stroke-linejoin="round">
+  <path d="M382 128H190C142 128 108 158 108 202C108 244 140 270 187 270H325"/>
+  <path d="M130 384H322C370 384 404 354 404 310C404 268 372 242 325 242H187"/>
+</g>
+<rect x="231" y="231" width="50" height="50" rx="10" fill="#6F83FF"/>
+</svg>

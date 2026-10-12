@@ -1,8 +1,44 @@
 @import "tailwindcss";
 
+/*
+ * Tokens SARGTECH v0.1 — alinhados a docs/identidade/sargtech-tokens.(css|json) (pacote oficial).
+ * Marca: Midnight, Cobalt, Indigo, Ice, White, Steel.
+ * Status (success/warning/danger) são FUNCIONAIS e não fazem parte da marca.
+ */
+@theme {
+  --color-midnight: #0a1020;
+  --color-ice: #f5f7fc;
+  --color-steel: #7b879b;
+  --color-indigo-brand: #6558f5;
+
+  --color-cobalt-50: #eef2ff;
+  --color-cobalt-100: #dde5ff;
+  --color-cobalt-200: #bccbff;
+  --color-cobalt-300: #8fa6ff;
+  --color-cobalt-400: #6580ff;
+  --color-cobalt-500: #3457ff;
+  --color-cobalt-600: #2a47d6;
+  --color-cobalt-700: #2238ab;
+  --color-cobalt-800: #1b2c86;
+  --color-cobalt-900: #14205f;
+
+  --color-success: #16875a;
+  --color-warning: #b56a00;
+  --color-danger: #c43d4b;
+
+  --color-line: #dee4ef;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-card: 18px;
+  --shadow-card: 0 10px 30px rgba(10, 16, 32, 0.06);
+
+  --font-sans: Inter, Manrope, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+}
+
 :root {
-  --background: #f5f7fb;
-  --foreground: #111827;
+  --background: #f5f7fc;
+  --foreground: #0a1020;
 }
 
 * {
@@ -13,7 +49,7 @@ body {
   margin: 0;
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
 }
 
 button,
@@ -21,4 +57,10 @@ input,
 select,
 textarea {
   font: inherit;
+}
+
+/* Foco visível e consistente (acessibilidade): não depende só de cor de borda. */
+:focus-visible {
+  outline: 2px solid var(--color-cobalt-500);
+  outline-offset: 2px;
 }

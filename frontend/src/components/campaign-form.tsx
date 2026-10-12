@@ -32,8 +32,8 @@ export default function CampaignForm() {
     finally { setSalvando(false); }
   }
 
-  return <form onSubmit={handleSubmit} className="mb-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-    <div className="flex items-center gap-3"><div className="rounded-xl bg-emerald-50 p-3 text-emerald-600"><Megaphone size={22} /></div><div><h2 className="font-bold text-slate-950">Nova campanha</h2><p className="text-sm text-slate-500">Use UTM para tornar Instagram e outras origens mensuráveis no CRM.</p></div></div>
+  return <form onSubmit={handleSubmit} className="mb-6 rounded-card border border-slate-200 bg-white p-6 shadow-sm">
+    <div className="flex items-center gap-3"><div className="rounded-xl bg-cobalt-50 p-3 text-cobalt-600"><Megaphone size={22} /></div><div><h2 className="font-bold text-midnight">Nova campanha</h2><p className="text-sm text-slate-500">Use UTM para tornar Instagram e outras origens mensuráveis no CRM.</p></div></div>
     <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
       <Field label="Nome"><input required value={nome} onChange={(e) => setNome(e.target.value)} className={inputClass} placeholder="Lançamento SargLab" /></Field>
       <Field label="Canal"><select value={canal} onChange={(e) => setCanal(e.target.value)} className={inputClass}><option>Instagram</option><option>LinkedIn</option><option>Google</option><option>WhatsApp</option><option>E-mail</option><option>Evento</option><option>Outro</option></select></Field>
@@ -43,8 +43,8 @@ export default function CampaignForm() {
       <Field label="UTM medium"><input value={utmMedium} onChange={(e) => setUtmMedium(e.target.value)} className={inputClass} /></Field>
       <div className="md:col-span-2"><Field label="Descrição"><input value={descricao} onChange={(e) => setDescricao(e.target.value)} className={inputClass} placeholder="Objetivo e público da campanha" /></Field></div>
     </div>
-    <div className="mt-5 flex items-center gap-4"><button disabled={salvando} className="rounded-xl bg-emerald-500 px-5 py-3 text-sm font-bold text-slate-950 disabled:opacity-50">{salvando ? "Salvando..." : "Criar campanha"}</button>{mensagem && <p className="text-sm text-slate-600">{mensagem}</p>}</div>
+    <div className="mt-5 flex items-center gap-4"><button disabled={salvando} className="rounded-xl bg-cobalt-500 transition hover:bg-cobalt-600 px-5 py-3 text-sm font-bold text-white disabled:opacity-50">{salvando ? "Salvando..." : "Criar campanha"}</button>{mensagem && <p className="text-sm text-slate-600">{mensagem}</p>}</div>
   </form>;
 }
-const inputClass = "w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-emerald-500";
+const inputClass = "w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-cobalt-500";
 function Field({ label, children }: { label: string; children: React.ReactNode }) { return <div><label className="mb-2 block text-sm font-medium text-slate-700">{label}</label>{children}</div>; }

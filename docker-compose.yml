@@ -3,6 +3,26 @@ services:
     build: ./backend
     env_file:
       - ./backend/.env
+    environment:
+      # Em produção a API recusa JWT_SECRET_KEY fraca e restringe o CORS.
+      # Para testar localmente com uma chave curta, use APP_ENV=development.
+      APP_ENV: ${APP_ENV:-production}
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
     ports:
       - "8000:8000"
     volumes:
@@ -12,7 +32,26 @@ services:
     build: ./frontend
     environment:
       BACKEND_URL: http://backend:8000
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - -q
+        - -O
+        - /dev/null
+        - http://127.0.0.1:3000/login
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     ports:
       - "3000:3000"

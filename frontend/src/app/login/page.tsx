@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import {
   FormEvent,
   useEffect,
@@ -7,7 +8,6 @@ import {
 } from "react";
 
 import {
-  BrainCircuit,
   Eye,
   EyeOff,
   LockKeyhole,
@@ -170,20 +170,16 @@ export default function LoginPage() {
 
 
   return (
-    <main className="flex min-h-screen bg-slate-950">
+    <main className="flex min-h-screen bg-midnight">
 
       {/* LADO ESQUERDO */}
       <section className="hidden w-1/2 flex-col justify-between p-12 lg:flex">
 
         <div className="flex items-center gap-3">
 
-          <div className="rounded-2xl bg-emerald-400 p-3 text-slate-950">
-            <BrainCircuit
-              size={28}
-            />
-          </div>
+          <Image src="/brand/sargtech-lockup-dark.svg" alt="SARGTECH" width={220} height={55} unoptimized priority />
 
-          <div>
+          <div className="border-l border-slate-700 pl-4">
 
             <p className="font-bold text-white">
               Gestão Inteligente
@@ -200,7 +196,7 @@ export default function LoginPage() {
 
         <div className="max-w-xl">
 
-          <p className="text-sm font-semibold uppercase tracking-[0.25em] text-emerald-400">
+          <p className="text-sm font-semibold uppercase tracking-wide text-cobalt-400">
             Gestão orientada por dados
           </p>
 
@@ -227,22 +223,18 @@ export default function LoginPage() {
 
 
       {/* LADO DIREITO */}
-      <section className="flex w-full items-center justify-center bg-slate-50 px-6 py-12 lg:w-1/2">
+      <section className="flex w-full items-center justify-center bg-ice px-6 py-12 lg:w-1/2">
 
         <div className="w-full max-w-md">
 
           {/* LOGO MOBILE */}
           <div className="mb-8 lg:hidden">
 
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
 
-              <div className="rounded-xl bg-emerald-500 p-2 text-slate-950">
-                <BrainCircuit
-                  size={24}
-                />
-              </div>
+              <Image src="/brand/sargtech-lockup-light.svg" alt="SARGTECH" width={160} height={40} unoptimized priority />
 
-              <strong className="text-slate-950">
+              <strong className="text-midnight">
                 Gestão Inteligente
               </strong>
 
@@ -251,11 +243,11 @@ export default function LoginPage() {
           </div>
 
 
-          <p className="text-sm font-semibold uppercase tracking-wider text-emerald-600">
+          <p className="text-sm font-semibold uppercase tracking-wider text-cobalt-600">
             Acesso ao sistema
           </p>
 
-          <h2 className="mt-2 text-3xl font-bold tracking-tight text-slate-950">
+          <h2 className="mt-2 text-3xl font-bold tracking-tight text-midnight">
             Entrar
           </h2>
 
@@ -297,7 +289,7 @@ export default function LoginPage() {
                     )
                   }
                   placeholder="seu@email.com"
-                  className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-4 outline-none transition focus:border-emerald-500"
+                  className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-4 outline-none transition focus:border-cobalt-500"
                 />
 
               </div>
@@ -336,7 +328,7 @@ export default function LoginPage() {
                     )
                   }
                   placeholder="Sua senha"
-                  className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-12 outline-none transition focus:border-emerald-500"
+                  className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-12 outline-none transition focus:border-cobalt-500"
                 />
 
 
@@ -385,7 +377,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={carregando}
-              className="w-full rounded-xl bg-emerald-500 px-5 py-3 font-bold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
+              className="w-full rounded-xl bg-cobalt-500 px-5 py-3 font-bold text-white transition hover:bg-cobalt-600 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {carregando
                 ? "Entrando..."

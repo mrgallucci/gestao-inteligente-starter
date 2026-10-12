@@ -1,0 +1,28 @@
+# Override usado SOMENTE para validar o Docker (CI / scripts/docker_check.sh):
+# adiciona um PostgreSQL descartável e injeta segredos de teste.
+# Não use em produção: lá o banco é o PostgreSQL/Supabase externo.
+#
+#   CI_JWT_SECRET=... docker compose -f docker-compose.yml -f docker-compose.ci.yml up --build
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: gi
+      POSTGRES_PASSWORD: gi_ci_password
+      POSTGRES_DB: gi
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gi -d gi"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  backend:
+    environment:
+      APP_ENV: production
+      DATABASE_URL: postgresql+psycopg://gi:gi_ci_password@db:5432/gi
+      JWT_SECRET_KEY: ${CI_JWT_SECRET:?defina CI_JWT_SECRET}
+      FRONTEND_URL: http://127.0.0.1:3000
+      UPLOAD_BASE_URL: http://127.0.0.1:8000/uploads
+    depends_on:
+      db:
+        condition: service_healthy

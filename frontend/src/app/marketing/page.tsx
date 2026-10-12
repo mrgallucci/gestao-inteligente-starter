@@ -56,11 +56,11 @@ export default async function MarketingPage() {
     <div className="mx-auto max-w-7xl">
 
       <header className="mb-8">
-        <p className="text-sm font-semibold uppercase tracking-wider text-emerald-600">
+        <p className="text-sm font-semibold uppercase tracking-wider text-cobalt-600">
           Marketing Analytics
         </p>
 
-        <h1 className="mt-1 text-3xl font-bold text-slate-950">
+        <h1 className="mt-1 text-3xl font-bold text-midnight">
           Campanhas
         </h1>
 
@@ -93,13 +93,13 @@ export default async function MarketingPage() {
       </section>
 
 
-      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <section className="overflow-hidden rounded-card border border-slate-200 bg-white shadow-sm">
 
         <div className="overflow-x-auto">
 
           <table className="w-full min-w-[1100px] text-left text-sm">
 
-            <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+            <thead className="bg-ice text-xs uppercase text-slate-500">
               <tr>
 
                 <th className="px-5 py-4">
@@ -200,7 +200,7 @@ export default async function MarketingPage() {
                         <span
                           className={
                             campaign.roi >= 0
-                              ? "font-bold text-emerald-600"
+                              ? "font-bold text-cobalt-600"
                               : "font-bold text-red-600"
                           }
                         >
@@ -226,7 +226,7 @@ export default async function MarketingPage() {
 
 
       {campaigns.length === 0 && (
-        <div className="mt-6 rounded-2xl border border-dashed border-slate-300 p-8 text-center text-slate-500">
+        <div className="mt-6 rounded-card border border-dashed border-slate-300 p-8 text-center text-slate-500">
           Nenhuma campanha cadastrada.
         </div>
       )}
@@ -244,13 +244,13 @@ function Metric({
   value: string;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="rounded-card border border-slate-200 bg-white p-5 shadow-sm">
 
       <p className="text-sm text-slate-500">
         {title}
       </p>
 
-      <p className="mt-2 text-3xl font-bold text-slate-950">
+      <p className="mt-2 text-3xl font-bold text-midnight">
         {value}
       </p>
 

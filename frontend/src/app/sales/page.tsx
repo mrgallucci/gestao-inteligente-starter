@@ -12,6 +12,9 @@ type Product = {
   nome: string;
   preco: number;
   ativo: boolean;
+  curso_id: number | null;
+  curso_nome: string | null;
+  curso_ativo: boolean | null;
 };
 
 type Sale = {
@@ -24,6 +27,18 @@ type Sale = {
   forma_pagamento: string;
   status_pagamento: string;
   criado_em: string;
+  entrega_tipo: "LMS" | null;
+  entrega_status:
+    | "Acesso liberado"
+    | "Aguardando pagamento"
+    | "Acesso suspenso"
+    | "Matrícula não gerada"
+    | "Não aplicável";
+  entrega_detalhe: string;
+  aviso: string | null;
+  curso_nome: string | null;
+  curso_ativo: boolean | null;
+  matricula_status: string | null;
 };
 
 async function getData() {
@@ -34,6 +49,14 @@ async function getData() {
   ]);
 
   return { leads, products, sales };
+}
+
+function deliveryStatusClass(status: Sale["entrega_status"]) {
+  const base = "inline-block rounded-full px-2.5 py-1 text-xs font-semibold ";
+  if (status === "Acesso liberado") return base + "bg-success/10 text-success";
+  if (status === "Aguardando pagamento" || status === "Matrícula não gerada") return base + "bg-warning/10 text-warning";
+  if (status === "Acesso suspenso") return base + "bg-danger/10 text-danger";
+  return base + "bg-slate-100 text-slate-600";
 }
 
 const money = new Intl.NumberFormat("pt-BR", {
@@ -63,11 +86,11 @@ export default async function SalesPage() {
     <div className="mx-auto max-w-7xl">
 
       <header className="mb-8">
-        <p className="text-sm font-semibold uppercase tracking-wider text-emerald-600">
+        <p className="text-sm font-semibold uppercase tracking-wider text-cobalt-600">
           Comercial
         </p>
 
-        <h1 className="mt-1 text-3xl font-bold text-slate-950">
+        <h1 className="mt-1 text-3xl font-bold text-midnight">
           Vendas
         </h1>
 
@@ -78,7 +101,7 @@ export default async function SalesPage() {
 
       <section className="mb-6 grid gap-4 sm:grid-cols-2">
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="rounded-card border border-slate-200 bg-white p-5 shadow-sm">
           <p className="text-sm text-slate-500">
             Vendas registradas
           </p>
@@ -88,7 +111,7 @@ export default async function SalesPage() {
           </p>
         </div>
 
-        <div className="rounded-2xl bg-slate-950 p-5 text-white shadow-sm">
+        <div className="rounded-card bg-midnight p-5 text-white shadow-sm">
           <p className="text-sm text-slate-400">
             Receita registrada
           </p>
@@ -105,13 +128,13 @@ export default async function SalesPage() {
         products={products}
       />
 
-      <section className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <section className="mt-6 overflow-hidden rounded-card border border-slate-200 bg-white shadow-sm">
 
         <div className="overflow-x-auto">
 
-          <table className="w-full min-w-[900px] text-left text-sm">
+          <table className="w-full min-w-[1100px] text-left text-sm">
 
-            <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+            <thead className="bg-ice text-xs uppercase text-slate-500">
               <tr>
                 <th className="px-5 py-4">
                   Cliente
@@ -130,6 +153,9 @@ export default async function SalesPage() {
                 </th>
                 <th className="px-5 py-4">
                   Status
+                </th>
+                <th className="px-5 py-4">
+                  Entrega
                 </th>
               </tr>
             </thead>
@@ -167,6 +193,25 @@ export default async function SalesPage() {
                     <SaleStatusControl saleId={sale.id} initialStatus={sale.status_pagamento} />
                   </td>
 
+                  <td className="px-5 py-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {sale.entrega_tipo && (
+                        <span className="inline-block rounded-full bg-cobalt-50 px-2.5 py-1 text-xs font-semibold text-cobalt-700">
+                          {sale.entrega_tipo}
+                        </span>
+                      )}
+                      <span className={deliveryStatusClass(sale.entrega_status)}>
+                        {sale.entrega_status}
+                      </span>
+                    </div>
+                    {sale.curso_nome && (
+                      <p className="mt-1 text-xs text-slate-500">{sale.curso_nome}</p>
+                    )}
+                    <p className="mt-1 text-xs text-slate-400">{sale.entrega_detalhe}</p>
+                    {sale.aviso && (
+                      <p className="mt-1 text-xs font-semibold text-warning">⚠ {sale.aviso}</p>
+                    )}
+                  </td>
                 </tr>
               ))}
 
