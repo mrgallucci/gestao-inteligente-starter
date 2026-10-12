@@ -152,3 +152,109 @@ npm run build
 ```
 
 Docker/CI segue pendente de ambiente com Docker.
+
+
+### RC 2.1.0-rc.1 — estado de validação (2026-10-10)
+
+Base: 2.0.2-rc.3 (backend informado como 162 testes passando na rc.2; frontend: audit 0, typecheck e build aprovados na rc.2, lint corrigido na rc.3 — resultados informados pelo time, não reproduzidos aqui).
+
+**Verificado neste ambiente (sem PyPI/npm/Docker/navegador):**
+- `py_compile` e `ruff --select F,E9` em todo o backend, incluindo testes novos: sem erros.
+- Sintaxe de 46 arquivos TS/TSX (transpile): 0 erros.
+- `ci.yml` é YAML válido (4 jobs: backend, frontend, docker, e2e).
+
+**NÃO executado (precisa de execução real/CI):**
+
+| Verificação | Observação |
+|---|---|
+| `pytest` | testes novos: `test_product_course_delivery.py`, `test_email_automation.py`, `test_data_cleanup.py` — **nunca rodaram**; podem exigir pequenos ajustes |
+| `alembic upgrade head` / drift | nova migration `b7d2f4a91c33` (tabela `email_logs`) — o teste de drift deve validar model × migration |
+| `npm ci`, audit, typecheck, lint, build | `package.json`/lockfile do frontend **não foram alterados**; mudanças são só de código/CSS (tipos e regras de lint não verificados) |
+| Docker / CI | job `e2e` novo, não bloqueante |
+| E2E Playwright | escrito, nunca executado; seletores podem precisar de ajuste |
+| Screenshots / revisão visual | **não produzidos** (não foi possível subir o Next aqui) |
+| E-mail real | nenhum e-mail enviado; testes usam provedor simulado |
+| Limpeza real | nenhuma limpeza executada; ver `docs/LIMPEZA_DADOS.md` |
+
+```text
+Data:
+Commit/versão: 2.1.0-rc.1
+pytest:
+alembic upgrade head / check:
+npm ci / audit / typecheck / lint / build:
+docker_check.sh:
+CI (GitHub Actions):
+E2E:
+Observações:
+```
+
+### RC 2.1.0-rc.2 — estado de validação (2026-10-10)
+
+**Informado pela gerência (ambiente independente, não reproduzido aqui), sobre a 2.1.0-rc.1:** 162 testes anteriores + 30 novos passaram em rodadas separadas. *(Na rc.2 o total de novos passou a 38 — ver rc.3 abaixo.)*
+
+**Alterações da rc.2 ainda NÃO executadas por ninguém:** testes novos/alterados da rc.2 (`test_email_automation.py` +5, `test_product_course_delivery.py` +3 e reescrita de asserções de entrega, `test_rbac.py` — duplicado agora devolve 201), mudanças de frontend (tela de Vendas, formulário de venda, `BrandMark` com `next/image`, assets em `public/brand`, `app/icon.png`).
+
+Verificado neste ambiente: `py_compile`, `ruff --select F,E9`, sintaxe dos TS/TSX, resolução de imports `@/…`, `npm ci --dry-run --offline` (lockfile intacto).
+
+**Para a devolução da RC (a executar em ambiente com acesso):** `pytest` completo; `alembic upgrade head`/`check` em PostgreSQL; `npm ci`, `npm audit --omit=dev --audit-level=high`, `typecheck`, `lint`, `build`; `scripts/docker_check.sh`; CI; Playwright.
+
+**Gate:** o job `e2e` do CI é `continue-on-error` **somente até a primeira execução verde**; depois remover a flag para torná-lo obrigatório antes da versão estável. Não promover para estável sem homologação manual (`docs/HOMOLOGACAO.md`).
+
+```text
+Data:
+Commit/versão: 2.1.0-rc.2
+pytest:
+alembic upgrade head / check (PostgreSQL):
+npm ci / audit / typecheck / lint / build:
+docker_check.sh:
+CI:
+Playwright:
+Homologação manual:
+```
+
+### RC 2.1.0-rc.3 — estado de validação (2026-10-10)
+
+**Informado pela gerência (ambiente independente, não reproduzido aqui), sobre a rc.2:** backend com **200 testes aprovados** = 162 anteriores + **38** novos (`test_product_course_delivery` 12, `test_email_automation` 17, `test_data_cleanup` 9). A menção anterior a "30 novos" valia apenas para a rc.1.
+
+**Alterações da rc.3 (nunca executadas por ninguém):** rótulo "Matrícula não gerada" + `aviso` (backend, 1 teste ampliado), SVGs oficiais (`BrandMark`, login, favicon `app/icon.svg`), tokens em `globals.css`.
+
+**Tentado neste ambiente e NÃO possível (sem acesso à rede de pacotes):** `npm ci` (registry inacessível, `ENOTFOUND`; cache offline vazio), instalação das dependências Python (PyPI sem acesso), `docker` (CLI presente, daemon ausente). Nada foi contornado. Portanto **nenhum resultado real** de: `pytest`, `alembic upgrade head`/PostgreSQL, `npm ci`, audit, typecheck, lint, build, Docker, CI, Playwright.
+
+Verificado estaticamente: `py_compile`, `ruff F/E9`, sintaxe de 46 TS/TSX, imports `@/…`, `npm ci --dry-run --offline` (lockfile coerente), SVGs oficiais sem script/href/image embutido.
+
+```text
+Data:
+Commit/versão: 2.1.0-rc.3
+pytest (esperado: 200 + novas asserções):
+alembic upgrade head / check (PostgreSQL):
+npm ci / audit / typecheck / lint / build:
+docker_check.sh:
+CI:
+Playwright (1ª execução verde → remover continue-on-error):
+Homologação manual:
+```
+
+
+### RC 2.1.0-rc.4 — estado de validação (2026-10-11)
+
+**Evidência independente informada pela gerência (rc.3):** 162 anteriores + 38 novos = 200 testes aprovados; migration `b7d2f4a91c33` consistente em banco limpo; Alembic head sem drift.
+
+**Alterações da rc.4 (nunca executadas):** resposta pública uniforme do e-book; 4 testes novos (`test_email_automation.py`, esperado total 204); 4 testes existentes ajustados para obter o id do Lead pelo CRM; workflow `e2e` com `npm ci`.
+
+**Verificado estaticamente:** `py_compile`, `ruff --select F,E9` (backend e testes), YAML do `ci.yml`.
+
+**NÃO executado (sem PyPI/npm/registry/Docker neste ambiente):** `pytest`, Alembic/PostgreSQL, `npm ci`, audit, typecheck, lint, build, Docker, CI, Playwright. Nenhum teste é declarado aprovado por esta rodada.
+
+**Pendência objetiva:** `e2e/package-lock.json` não existe — `npm install --package-lock-only` falhou por falta de acesso ao registry; não foi fabricado. Sem ele o job `e2e` falha com mensagem explícita (job ainda `continue-on-error`, temporário).
+
+```text
+Data:
+Commit/versão: 2.1.0-rc.4
+pytest (esperado 204):
+alembic upgrade head / check (PostgreSQL):
+npm ci / audit / typecheck / lint / build:
+docker_check.sh:
+CI:
+Playwright (1ª execução verde → remover continue-on-error):
+Homologação manual:
+```

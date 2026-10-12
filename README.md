@@ -6,6 +6,14 @@ A aplicação usa o Workshop **SargLab — IA no Dia a Dia** / apresentação co
 
 > Posicionamento SargLab: **IA prática para quem trabalha. Método CLARO · prompts · produtividade.**
 
+## Novidades da 2.1.0-rc.2 (sobre a 2.1.0-rc.1)
+
+- Criação de **Curso** pela interface, vínculo Produto → Curso visível em Produtos e Vendas, e resultado da entrega (tipo LMS + status: Acesso liberado / Aguardando pagamento / Acesso suspenso / Não aplicável) na listagem de Vendas.
+- **E-mail pós e-book** (desligado por padrão): `docs/EMAIL.md`.
+- **Limpeza segura de dados de teste** (dry-run, backup, aprovação por ID): `docs/LIMPEZA_DADOS.md`.
+- **Identidade visual SARGTECH v0.1** na interface; Kanban com feedback "Salvando…".
+- E2E Playwright em `e2e/` (isolado do frontend). Decisões em aberto: `docs/DECISOES_2.1.0-rc.1.md`.
+
 ## O que está incluído
 
 - CRM de Leads B2B/B2C com ficha comercial completa.

@@ -36,8 +36,8 @@ export default function StudentPage() {
     if (enrollmentId) loadEnrollment();
   }, [enrollmentId, router]);
 
-  if (loading) return <div className="flex min-h-[60vh] items-center justify-center"><div className="text-center"><LoaderCircle size={36} className="mx-auto animate-spin text-emerald-500" /><p className="mt-4 text-sm text-slate-500">Carregando curso...</p></div></div>;
-  if (error) return <div className="mx-auto max-w-xl"><div className="rounded-2xl border border-red-200 bg-red-50 p-6"><h1 className="text-lg font-bold text-red-800">Não foi possível abrir o curso</h1><p className="mt-2 text-sm text-red-700">{error}</p><button type="button" onClick={() => router.back()} className="mt-5 flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white"><ArrowLeft size={16} />Voltar</button></div></div>;
+  if (loading) return <div className="flex min-h-[60vh] items-center justify-center"><div className="text-center"><LoaderCircle size={36} className="mx-auto animate-spin text-cobalt-500" /><p className="mt-4 text-sm text-slate-500">Carregando curso...</p></div></div>;
+  if (error) return <div className="mx-auto max-w-xl"><div className="rounded-card border border-red-200 bg-red-50 p-6"><h1 className="text-lg font-bold text-red-800">Não foi possível abrir o curso</h1><p className="mt-2 text-sm text-red-700">{error}</p><button type="button" onClick={() => router.back()} className="mt-5 flex items-center gap-2 rounded-xl bg-midnight px-4 py-2 text-sm font-semibold text-white"><ArrowLeft size={16} />Voltar</button></div></div>;
   if (!enrollment) return null;
   return <StudentCourse enrollment={enrollment} />;
 }

@@ -1,0 +1,13 @@
+{
+  "name": "gestao-inteligente-e2e",
+  "private": true,
+  "version": "2.1.0-rc.4",
+  "description": "E2E (Playwright) isolado do frontend: não altera package-lock.json do app.",
+  "scripts": {
+    "test": "playwright test",
+    "install:browsers": "playwright install --with-deps chromium"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.55.1"
+  }
+}

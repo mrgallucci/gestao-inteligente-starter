@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="240" viewBox="0 0 960 240" role="img" aria-label="SARGTECH logo">
+<rect width="960" height="240" rx="28" fill="#0A1020"/>
+<g transform="translate(34 34) scale(.3359375)" fill="none" stroke="#6F83FF" stroke-width="54" stroke-linecap="square" stroke-linejoin="round">
+  <path d="M382 128H190C142 128 108 158 108 202C108 244 140 270 187 270H325"/>
+  <path d="M130 384H322C370 384 404 354 404 310C404 268 372 242 325 242H187"/>
+</g>
+<rect x="112" y="112" width="17" height="17" rx="3" fill="#6F83FF"/>
+<text x="232" y="150" font-family="Inter, Manrope, Arial, sans-serif" font-size="78" font-weight="750" letter-spacing="2" fill="#FFFFFF">SARG</text>
+<text x="457" y="150" font-family="Inter, Manrope, Arial, sans-serif" font-size="78" font-weight="750" letter-spacing="2" fill="#6F83FF">TECH</text>
+</svg>

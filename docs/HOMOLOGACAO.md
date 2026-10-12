@@ -59,3 +59,35 @@ Aluno:
 - [ ] Itens da lista "não vender como pronto" do briefing continuam fora do material comercial: WhatsApp/e-mail bidirecional, IA generativa, ERP, multiempresa, storage distribuído.
 - [ ] Regras N1–N4 (`AUDITORIA.md`) conferidas na operação: Pós-venda não regride; nova compra restaura acesso; reembolso com outra venda paga não suspende; restauração mantém o andamento.
 - [ ] Homologação com operação real do SargLab antes de ampliar o mercado.
+
+## G. Novidades da 2.1.0-rc.1 (roteiro manual)
+
+Produto → Curso → Matrícula
+- [ ] 👤 Produtos: card sem curso mostra "Este produto não libera curso." + link "Criar curso para este produto".
+- [ ] 👤 Admin Cursos: criar curso escolhendo um produto sem curso; produto some da lista; tentar vincular segundo curso ao mesmo produto é impossível pela tela e dá 409 pela API.
+- [ ] 👤 Produtos: card passa a mostrar "Curso vinculado".
+- [ ] 👤 Vendas: ao escolher Cliente + Produto, o aviso muda entre "libera acesso ao LMS", "após o pagamento" e "não libera curso" conforme produto e status.
+- [ ] 👤 Venda Paga de produto com curso → listagem "LMS · Acesso liberado"; Reembolsado → "Acesso suspenso"; voltar a Pago → "Acesso liberado".
+- [ ] 👤 Venda de produto SEM curso: permitida, "Não aplicável", nenhuma matrícula em LMS.
+- [ ] 👤 Venda Pendente → "Aguardando pagamento"; Cancelada/Reembolsada sem acesso prévio → "Não aplicável"; produto com curso inativo → aviso laranja antes de registrar e na listagem.
+- [ ] 🤖 Cobertos por `test_product_course_delivery.py` (API); 🧪 E2E `e2e/` aguardando primeira execução.
+
+E-mail (ambiente seguro, nunca em produção real)
+- [ ] 👤 Baixar o e-book duas vezes com o mesmo e-mail: um único Lead, Interações "Download e-book" e (com automação ligada) "E-mail automático" a cada envio; nunca erro 409.
+- [ ] 👤 Resposta pública idêntica (HTTP e corpo) para e-mail novo e já existente: comparar as duas respostas com `curl -i`; nenhuma traz id/status.
+- [ ] 👤 E2E: gerar e versionar `e2e/package-lock.json` (ver `e2e/README.md`) e rodar o job; só após a 1ª execução verde remover `continue-on-error`.
+- [ ] 👤 Com `APP_ENV=production` e `EMAIL_COMMERCIAL_ENABLED=true`: o e-mail NÃO contém CTA comercial.
+- [ ] 👤 Padrão: com `EMAIL_AUTOMATION_ENABLED=false`, baixar o e-book cria o Lead e nada é enviado.
+- [ ] 👤 `EMAIL_PROVIDER=console` + flag ligada: log mostra o envio; Lead ganha Interação "E-mail automático"; `GET /api/email-logs` mostra `enviado`.
+- [ ] 👤 SMTP de teste (caixa própria): e-mail chega, sem link comercial quando `PAID_PRODUCT_URL` está vazio.
+- [ ] 👤 Derrubar o SMTP (senha errada): Lead continua sendo criado; `email_logs` registra `falha`.
+- [ ] 🤖 Cobertos por `test_email_automation.py` (provedor simulado).
+
+Limpeza de dados
+- [ ] 👤 Seguir `docs/LIMPEZA_DADOS.md` numa CÓPIA: backup → clone → dry-run → revisar → ensaio (`--rehearsal`) → execução → validar login/CRM/vendas/LMS/analytics.
+- [ ] 🤖 Regras do script cobertas por `test_data_cleanup.py`.
+
+Visual SARGTECH
+- [ ] 👤 Revisar Login, Dashboard, Leads, Funil, Produtos, Vendas, Admin Cursos: sidebar Midnight, ativo Cobalt, fundo Ice, sem efeitos decorativos; status (verde/âmbar/vermelho) continuam semânticos.
+- [ ] 👤 Kanban: arrastar mostra "Salvando…"; derrubar a API e arrastar → card volta e aparece a mensagem de erro.
+- [ ] 👤 Desktop e ~390 px. Capturar screenshots para aprovação da identidade.

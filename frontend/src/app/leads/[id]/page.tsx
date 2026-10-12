@@ -91,7 +91,7 @@ export default async function LeadPage({ params }: Props) {
   return <div className="mx-auto max-w-7xl">
     <Link href="/leads" className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-900"><ArrowLeft size={18} />Voltar para Leads</Link>
 
-    <header className="mb-8"><p className="text-sm font-semibold uppercase tracking-wider text-emerald-600">CRM / Lead #{lead.id}</p><h1 className="mt-2 text-3xl font-bold text-slate-950">{lead.nome}</h1><p className="mt-2 text-slate-500">
+    <header className="mb-8"><p className="text-sm font-semibold uppercase tracking-wider text-cobalt-600">CRM / Lead #{lead.id}</p><h1 className="mt-2 text-3xl font-bold text-midnight">{lead.nome}</h1><p className="mt-2 text-slate-500">
   Ficha comercial, interesses e histórico do relacionamento com a SargLab.
 </p></header>
 
@@ -103,8 +103,8 @@ export default async function LeadPage({ params }: Props) {
     </section>
 
     <section className="mt-6 grid gap-6 lg:grid-cols-2">
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-bold text-slate-950">Dados comerciais</h2>
+      <div className="rounded-card border border-slate-200 bg-white p-6 shadow-sm">
+        <h2 className="text-lg font-bold text-midnight">Dados comerciais</h2>
         <dl className="mt-5 grid gap-4 sm:grid-cols-2">
           <Info icon={<Building2 size={17} />} label="Empresa" value={lead.empresa ?? "—"} />
           <Info icon={<UsersRound size={17} />} label="Tipo / equipe" value={`${lead.tipo_cliente}${lead.tamanho_equipe ? ` · ${lead.tamanho_equipe} pessoas` : ""}`} />
@@ -119,11 +119,11 @@ export default async function LeadPage({ params }: Props) {
           <Info label="Oferta" value={lead.oferta_interesse ?? "—"} />
           <Info label="Formato" value={lead.formato_interesse ?? "—"} />
         </dl>
-        <div className="mt-5 flex items-center gap-2 text-sm"><ShieldCheck size={17} className={lead.consentimento_contato ? "text-emerald-600" : "text-slate-400"} /><span className="text-slate-600">Consentimento para contato: <strong>{lead.consentimento_contato ? "Sim" : "Não"}</strong></span></div>
+        <div className="mt-5 flex items-center gap-2 text-sm"><ShieldCheck size={17} className={lead.consentimento_contato ? "text-cobalt-600" : "text-slate-400"} /><span className="text-slate-600">Consentimento para contato: <strong>{lead.consentimento_contato ? "Sim" : "Não"}</strong></span></div>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-bold text-slate-950">Diagnóstico e próxima ação</h2>
+      <div className="rounded-card border border-slate-200 bg-white p-6 shadow-sm">
+        <h2 className="text-lg font-bold text-midnight">Diagnóstico e próxima ação</h2>
         <div className="mt-5 space-y-5">
           <div><p className="text-sm text-slate-500">Dor / gatilho</p><p className="mt-1 whitespace-pre-wrap font-medium text-slate-900">{lead.dor_gatilho ?? "Não informado"}</p></div>
           <div><p className="text-sm text-slate-500">Próxima ação</p><p className="mt-1 font-medium text-slate-900">{lead.proxima_acao ?? "Não definida"}</p></div>
@@ -136,16 +136,16 @@ export default async function LeadPage({ params }: Props) {
     <LeadEditForm lead={lead} campaigns={campaigns} />
 
     <section className="mt-6 grid gap-6 lg:grid-cols-[1fr_2fr]">
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><h2 className="text-lg font-bold text-slate-950">Relacionamento</h2><p className="mt-5 text-sm text-slate-500">Interações registradas</p><p className="mt-1 text-3xl font-bold text-slate-950">{interactions.length}</p><p className="mt-6 text-xs text-slate-400">Entrada no CRM: {new Date(lead.criado_em).toLocaleString("pt-BR")}</p></div>
+      <div className="rounded-card border border-slate-200 bg-white p-6 shadow-sm"><h2 className="text-lg font-bold text-midnight">Relacionamento</h2><p className="mt-5 text-sm text-slate-500">Interações registradas</p><p className="mt-1 text-3xl font-bold text-midnight">{interactions.length}</p><p className="mt-6 text-xs text-slate-400">Entrada no CRM: {new Date(lead.criado_em).toLocaleString("pt-BR")}</p></div>
       <InteractionForm leadId={lead.id} />
     </section>
 
-    <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-      <h2 className="text-lg font-bold text-slate-950">Histórico de atendimento</h2>
-      {interactions.length === 0 ? <div className="mt-5 rounded-xl bg-slate-50 p-5 text-sm text-slate-500">Nenhum atendimento registrado ainda.</div> : <div className="mt-5 space-y-4">{interactions.map((interaction) => <div key={interaction.id} className="rounded-xl border border-slate-200 p-4"><div className="flex items-start justify-between gap-4"><div><p className="font-bold text-slate-900">{interaction.tipo}</p><p className="mt-2 text-sm leading-relaxed text-slate-600">{interaction.descricao}</p></div><span className="shrink-0 text-xs text-slate-400">{new Date(interaction.criado_em).toLocaleString("pt-BR")}</span></div>{interaction.resultado && <div className="mt-4"><span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">{interaction.resultado}</span></div>}{interaction.follow_up_em && <p className="mt-3 text-xs text-slate-500">Follow-up: {new Date(interaction.follow_up_em).toLocaleString("pt-BR")}</p>}</div>)}</div>}
+    <section className="mt-6 rounded-card border border-slate-200 bg-white p-6 shadow-sm">
+      <h2 className="text-lg font-bold text-midnight">Histórico de atendimento</h2>
+      {interactions.length === 0 ? <div className="mt-5 rounded-xl bg-ice p-5 text-sm text-slate-500">Nenhum atendimento registrado ainda.</div> : <div className="mt-5 space-y-4">{interactions.map((interaction) => <div key={interaction.id} className="rounded-xl border border-slate-200 p-4"><div className="flex items-start justify-between gap-4"><div><p className="font-bold text-slate-900">{interaction.tipo}</p><p className="mt-2 text-sm leading-relaxed text-slate-600">{interaction.descricao}</p></div><span className="shrink-0 text-xs text-slate-400">{new Date(interaction.criado_em).toLocaleString("pt-BR")}</span></div>{interaction.resultado && <div className="mt-4"><span className="rounded-full bg-cobalt-50 px-3 py-1 text-xs font-semibold text-cobalt-700">{interaction.resultado}</span></div>}{interaction.follow_up_em && <p className="mt-3 text-xs text-slate-500">Follow-up: {new Date(interaction.follow_up_em).toLocaleString("pt-BR")}</p>}</div>)}</div>}
     </section>
   </div>;
 }
 
-function Card({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) { return <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="mb-3 text-slate-500">{icon}</div><p className="text-xs uppercase text-slate-400">{label}</p><p className="mt-1 font-bold text-slate-900">{value}</p></div>; }
+function Card({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) { return <div className="rounded-card border border-slate-200 bg-white p-5 shadow-sm"><div className="mb-3 text-slate-500">{icon}</div><p className="text-xs uppercase text-slate-400">{label}</p><p className="mt-1 font-bold text-slate-900">{value}</p></div>; }
 function Info({ icon, label, value }: { icon?: React.ReactNode; label: string; value: string }) { return <div><dt className="flex items-center gap-2 text-xs uppercase text-slate-400">{icon}{label}</dt><dd className="mt-1 font-medium text-slate-900">{value}</dd></div>; }

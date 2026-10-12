@@ -97,11 +97,11 @@ export default function AppShell({
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950">
+      <div className="flex min-h-screen items-center justify-center bg-midnight">
 
         <div className="text-center">
 
-          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-slate-700 border-t-emerald-400" />
+          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-slate-700 border-t-cobalt-400" />
 
           <p className="mt-4 text-sm text-slate-400">
             Verificando sessão...
@@ -116,7 +116,7 @@ export default function AppShell({
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-slate-950" />
+      <div className="min-h-screen bg-midnight" />
     );
   }
 
@@ -128,13 +128,13 @@ export default function AppShell({
     )
   ) {
     return (
-      <div className="min-h-screen bg-slate-950" />
+      <div className="min-h-screen bg-midnight" />
     );
   }
 
 
   return (
-    <div className="flex min-h-screen bg-slate-50">
+    <div className="flex min-h-screen bg-ice">
 
       <Sidebar />
 

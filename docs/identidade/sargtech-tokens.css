@@ -1,0 +1,22 @@
+:root {
+  --sargtech-midnight: #0A1020;
+  --sargtech-cobalt: #3457FF;
+  --sargtech-indigo: #6558F5;
+  --sargtech-ice: #F5F7FC;
+  --sargtech-white: #FFFFFF;
+  --sargtech-steel: #7B879B;
+  --sargtech-border: #DEE4EF;
+  --status-success: #16875A;
+  --status-warning: #B56A00;
+  --status-danger: #C43D4B;
+
+  --font-ui: Inter, Manrope, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --shadow-card: 0 10px 30px rgba(10, 16, 32, .06);
+}
+
+body { background: var(--sargtech-ice); color: var(--sargtech-midnight); font-family: var(--font-ui); }
+.btn-primary { background: var(--sargtech-cobalt); color: white; border-radius: var(--radius-md); }
+.card { background: white; border: 1px solid var(--sargtech-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); }

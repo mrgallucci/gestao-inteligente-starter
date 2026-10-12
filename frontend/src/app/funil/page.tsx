@@ -32,11 +32,11 @@ export default async function FunilPage() {
   return (
     <div className="mx-auto max-w-[1800px]">
       <header className="mb-8">
-        <p className="text-sm font-semibold uppercase tracking-wider text-emerald-600">
+        <p className="text-sm font-semibold uppercase tracking-wider text-cobalt-600">
           Comercial
         </p>
 
-        <h1 className="mt-1 text-3xl font-bold tracking-tight text-slate-950">
+        <h1 className="mt-1 text-3xl font-bold tracking-tight text-midnight">
           Funil de vendas
         </h1>
 
@@ -46,32 +46,32 @@ export default async function FunilPage() {
       </header>
 
       <section className="mb-6 grid gap-4 sm:grid-cols-3">
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="rounded-card border border-slate-200 bg-white p-5 shadow-sm">
           <p className="text-sm text-slate-500">
             Leads ativos
           </p>
 
-          <p className="mt-2 text-3xl font-bold text-slate-950">
+          <p className="mt-2 text-3xl font-bold text-midnight">
             {ativos}
           </p>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="rounded-card border border-slate-200 bg-white p-5 shadow-sm">
           <p className="text-sm text-slate-500">
             Fechados
           </p>
 
-          <p className="mt-2 text-3xl font-bold text-slate-950">
+          <p className="mt-2 text-3xl font-bold text-midnight">
             {vendidos}
           </p>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="rounded-card border border-slate-200 bg-white p-5 shadow-sm">
           <p className="text-sm text-slate-500">
             Perdidos
           </p>
 
-          <p className="mt-2 text-3xl font-bold text-slate-950">
+          <p className="mt-2 text-3xl font-bold text-midnight">
             {perdidos}
           </p>
         </div>

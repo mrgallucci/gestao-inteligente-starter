@@ -44,7 +44,7 @@ O ambiente em que a auditoria rodou **não tem acesso ao PyPI nem ao npm** (pol�
 **Segurança / produção**
 
 - **D1 — `/uploads` é público.** O FastAPI serve `backend/uploads` sem autenticação. Os nomes são UUID de 128 bits (não adivinháveis), mas quem tem o link continua acessando o arquivo, inclusive um aluno cuja matrícula foi suspensa. É a "limitação do upload local" que o briefing permite aceitar formalmente na primeira entrega (instância única). Para fechar: storage privado (S3/Supabase Storage com URL assinada) — está em `ROADMAP.md`.
-- **D2 — Endpoint público do e-book** (`POST /api/public/leads/ebook`): sem rate limit/captcha, e o 409 revela se um e-mail já está cadastrado. Mitigar no proxy reverso (limite por IP). Se a página do e-book rodar em outro domínio, inclua-o em `CORS_ORIGINS`.
+- **D2 — Endpoint público do e-book** (`POST /api/public/leads/ebook`): sem rate limit/captcha, e o 409 revelava se um e-mail já estava cadastrado (**corrigido na 2.1.0-rc.4**: resposta idêntica 201 para e-mail novo e existente). Mitigar no proxy reverso (limite por IP). Se a página do e-book rodar em outro domínio, inclua-o em `CORS_ORIGINS`.
 - **D3 — Login sem rate limit/bloqueio.** Aplicar limite no proxy reverso. Um bloqueio por conta na aplicação foi evitado de propósito (permitiria bloquear o admin de fora).
 - **D4 — `bootstrap-admin` fica aberto até existir o primeiro usuário.** Crie o administrador imediatamente após o primeiro deploy (ver `DEPLOY.md`).
 - **D5 — JWT sem revogação.** O logout apaga o cookie, mas o token continua válido até expirar (8 h por padrão). Desativar o usuário bloqueia o token na hora (o backend consulta o banco a cada chamada).

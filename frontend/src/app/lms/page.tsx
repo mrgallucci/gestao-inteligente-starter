@@ -155,11 +155,11 @@ export default async function LMSPage() {
 
       <header className="mb-8">
 
-        <p className="text-sm font-semibold uppercase tracking-wider text-emerald-600">
+        <p className="text-sm font-semibold uppercase tracking-wider text-cobalt-600">
           Learning Management System
         </p>
 
-        <h1 className="mt-1 text-3xl font-bold text-slate-950">
+        <h1 className="mt-1 text-3xl font-bold text-midnight">
           LMS Analytics
         </h1>
 
@@ -253,9 +253,9 @@ export default async function LMSPage() {
 
 
       {/* DESEMPENHO POR CONTEÚDO */}
-      <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <section className="mt-6 rounded-card border border-slate-200 bg-white p-6 shadow-sm">
 
-        <h2 className="text-lg font-bold text-slate-950">
+        <h2 className="text-lg font-bold text-midnight">
           Desempenho por conteúdo
         </h2>
 
@@ -379,7 +379,7 @@ export default async function LMSPage() {
                         <div className="h-2 overflow-hidden rounded-full bg-slate-100">
 
                           <div
-                            className="h-full rounded-full bg-emerald-500"
+                            className="h-full rounded-full bg-cobalt-500"
                             style={{
                               width:
                                 `${Math.min(
@@ -420,11 +420,11 @@ export default async function LMSPage() {
 
 
       {/* MATRÍCULAS */}
-      <section className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <section className="mt-6 overflow-hidden rounded-card border border-slate-200 bg-white shadow-sm">
 
         <div className="border-b border-slate-200 p-6">
 
-          <h2 className="text-lg font-bold text-slate-950">
+          <h2 className="text-lg font-bold text-midnight">
             Alunos e matrículas
           </h2>
 
@@ -439,7 +439,7 @@ export default async function LMSPage() {
 
           <table className="w-full min-w-[1000px] text-left text-sm">
 
-            <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+            <thead className="bg-ice text-xs uppercase text-slate-500">
 
               <tr>
 
@@ -487,7 +487,7 @@ export default async function LMSPage() {
 
                       <Link
                         href={`/leads/${item.lead_id}`}
-                        className="hover:text-emerald-600"
+                        className="hover:text-cobalt-600"
                       >
                         {item.aluno}
                       </Link>
@@ -534,7 +534,7 @@ export default async function LMSPage() {
 
                       <Link
                         href={`/aluno/${item.id}`}
-                        className="font-semibold text-emerald-600 hover:underline"
+                        className="font-semibold text-cobalt-600 hover:underline"
                       >
                         Abrir curso
                       </Link>
@@ -578,13 +578,13 @@ function Metric({
   subtitle: string;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="rounded-card border border-slate-200 bg-white p-5 shadow-sm">
 
       <p className="text-sm text-slate-500">
         {title}
       </p>
 
-      <p className="mt-2 text-3xl font-bold text-slate-950">
+      <p className="mt-2 text-3xl font-bold text-midnight">
         {value}
       </p>
 

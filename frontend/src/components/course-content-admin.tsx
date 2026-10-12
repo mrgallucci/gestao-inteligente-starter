@@ -729,7 +729,7 @@ export default function CourseContentAdmin({
     <div>
 
       {/* SELEÇÃO DO CURSO */}
-      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <section className="rounded-card border border-slate-200 bg-white p-6 shadow-sm">
 
         <div className="grid gap-5 lg:grid-cols-[1fr_2fr]">
 
@@ -753,7 +753,7 @@ export default function CourseContentAdmin({
 
                 resetForm();
               }}
-              className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-emerald-500"
+              className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-cobalt-500"
             >
 
               {courses.map(
@@ -780,7 +780,7 @@ export default function CourseContentAdmin({
 
           {selectedCourse && (
 
-            <div className="rounded-xl bg-slate-50 p-4">
+            <div className="rounded-xl bg-ice p-4">
 
               <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
                 Produto relacionado
@@ -806,20 +806,20 @@ export default function CourseContentAdmin({
         onSubmit={
           handleSubmit
         }
-        className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+        className="mt-6 rounded-card border border-slate-200 bg-white p-6 shadow-sm"
       >
 
         <div className="flex items-center justify-between gap-4">
 
           <div>
 
-            <p className="text-sm font-semibold uppercase tracking-wider text-emerald-600">
+            <p className="text-sm font-semibold uppercase tracking-wider text-cobalt-600">
               {editingId
                 ? "Editar conteúdo"
                 : "Novo conteúdo"}
             </p>
 
-            <h2 className="mt-1 text-xl font-bold text-slate-950">
+            <h2 className="mt-1 text-xl font-bold text-midnight">
               {editingId
                 ? "Alterar material"
                 : "Adicionar ao curso"}
@@ -868,7 +868,7 @@ export default function CourseContentAdmin({
                 )
               }
               placeholder="Ex.: Vídeo 2 - Planejamento do Jardim"
-              className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-emerald-500"
+              className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-cobalt-500"
             />
 
           </div>
@@ -891,7 +891,7 @@ export default function CourseContentAdmin({
                   event.target.value
                 )
               }
-              className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-emerald-500"
+              className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-cobalt-500"
             >
 
               <option value="video">
@@ -931,7 +931,7 @@ export default function CourseContentAdmin({
                   event.target.value
                 )
               }
-              className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-emerald-500"
+              className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-cobalt-500"
             />
 
           </div>
@@ -957,7 +957,7 @@ export default function CourseContentAdmin({
                 )
               }
               placeholder="Ex.: 15"
-              className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-emerald-500"
+              className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-cobalt-500"
             />
 
           </div>
@@ -982,7 +982,7 @@ export default function CourseContentAdmin({
                 )
               }
               placeholder="https://..."
-              className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-emerald-500"
+              className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-cobalt-500"
             />
 
           </div>
@@ -992,7 +992,7 @@ export default function CourseContentAdmin({
             <label className="mb-2 block text-sm font-medium text-slate-700">
               Upload local (opcional)
             </label>
-            <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-600 hover:border-emerald-400">
+            <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-dashed border-slate-300 bg-ice px-4 py-3 text-sm font-semibold text-slate-600 hover:border-cobalt-400">
               <Upload size={18} />
               {enviandoArquivo ? "Enviando arquivo..." : "Selecionar arquivo (até 50 MB)"}
               <input
@@ -1030,7 +1030,7 @@ export default function CourseContentAdmin({
               }
               rows={3}
               placeholder="Descrição do conteúdo..."
-              className="w-full resize-none rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-emerald-500"
+              className="w-full resize-none rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-cobalt-500"
             />
 
           </div>
@@ -1067,7 +1067,7 @@ export default function CourseContentAdmin({
               salvando ||
               !selectedCourseId
             }
-            className="flex items-center gap-2 rounded-xl bg-emerald-500 px-5 py-3 text-sm font-bold text-slate-950 transition hover:bg-emerald-400 disabled:opacity-50"
+            className="flex items-center gap-2 rounded-xl bg-cobalt-500 px-5 py-3 text-sm font-bold text-white transition hover:bg-cobalt-600 disabled:opacity-50"
           >
 
             {editingId ? (
@@ -1108,7 +1108,7 @@ export default function CourseContentAdmin({
 
         <div className="mb-4">
 
-          <h2 className="text-xl font-bold text-slate-950">
+          <h2 className="text-xl font-bold text-midnight">
             Conteúdo do curso
           </h2>
 
@@ -1129,7 +1129,7 @@ export default function CourseContentAdmin({
                 key={
                   content.id
                 }
-                className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+                className="rounded-card border border-slate-200 bg-white p-5 shadow-sm"
               >
 
                 <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
@@ -1185,7 +1185,7 @@ export default function CourseContentAdmin({
                       </div>
 
 
-                      <h3 className="mt-1 font-bold text-slate-950">
+                      <h3 className="mt-1 font-bold text-midnight">
                         {content.ordem}.{" "}
                         {content.titulo}
                       </h3>
@@ -1223,7 +1223,7 @@ export default function CourseContentAdmin({
                           }
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="mt-2 inline-block text-sm font-semibold text-emerald-600 hover:underline"
+                          className="mt-2 inline-block text-sm font-semibold text-cobalt-600 hover:underline"
                         >
                           Abrir conteúdo
                         </a>
@@ -1244,7 +1244,7 @@ export default function CourseContentAdmin({
                           content
                         )
                       }
-                      className="flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold hover:bg-slate-50"
+                      className="flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold hover:bg-ice"
                     >
                       <Pencil
                         size={16}
@@ -1285,7 +1285,7 @@ export default function CourseContentAdmin({
 
         {contents.length === 0 && (
 
-          <div className="rounded-2xl border border-dashed border-slate-300 p-10 text-center text-sm text-slate-500">
+          <div className="rounded-card border border-dashed border-slate-300 p-10 text-center text-sm text-slate-500">
             Nenhum conteúdo cadastrado
             neste curso.
           </div>

@@ -3,6 +3,8 @@ import {
 } from "next/navigation";
 
 import CourseContentAdmin from "@/components/course-content-admin";
+import CourseForm, { type CourseFormProduct } from "@/components/course-form";
+import { protectedJson } from "@/lib/server-protected";
 
 import {
   serverApi,
@@ -70,9 +72,19 @@ async function getCourses():
 }
 
 
-export default async function AdminCoursesPage() {
+export default async function AdminCoursesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ produto?: string }>;
+}) {
+  const { produto } = await searchParams;
   const courses =
     await getCourses();
+  const products = await protectedJson<CourseFormProduct[]>(
+    "/api/products",
+    "Não foi possível carregar os produtos."
+  );
+  const initialProductId = Number(produto);
 
 
   return (
@@ -80,21 +92,26 @@ export default async function AdminCoursesPage() {
 
       <header className="mb-8">
 
-        <p className="text-sm font-semibold uppercase tracking-wider text-emerald-600">
+        <p className="text-sm font-semibold uppercase tracking-wider text-cobalt-600">
           Administração LMS
         </p>
 
-        <h1 className="mt-1 text-3xl font-bold text-slate-950">
+        <h1 className="mt-1 text-3xl font-bold text-midnight">
           Conteúdo dos cursos
         </h1>
 
         <p className="mt-2 text-slate-500">
-          Cadastre, edite e organize
+          Crie cursos, vincule-os a produtos e organize
           apostilas, vídeos e materiais.
         </p>
 
       </header>
 
+
+      <CourseForm
+        products={products}
+        initialProductId={Number.isInteger(initialProductId) ? initialProductId : null}
+      />
 
       {courses.length > 0 ? (
 
@@ -104,15 +121,15 @@ export default async function AdminCoursesPage() {
 
       ) : (
 
-        <div className="rounded-2xl border border-dashed border-slate-300 p-10 text-center">
+        <div className="rounded-card border border-dashed border-slate-300 p-10 text-center">
 
           <p className="font-semibold text-slate-800">
             Nenhum curso cadastrado.
           </p>
 
           <p className="mt-2 text-sm text-slate-500">
-            Cadastre um curso antes
-            de adicionar conteúdos.
+            Use o formulário acima para criar um curso
+            e vinculá-lo a um produto.
           </p>
 
         </div>

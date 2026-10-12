@@ -512,11 +512,11 @@ export default function UsersPage() {
 
       <header className="mb-8">
 
-        <p className="text-sm font-semibold uppercase tracking-wider text-emerald-600">
+        <p className="text-sm font-semibold uppercase tracking-wider text-cobalt-600">
           Administração
         </p>
 
-        <h1 className="mt-1 text-3xl font-bold text-slate-950">
+        <h1 className="mt-1 text-3xl font-bold text-midnight">
           Gestão de Usuários
         </h1>
 
@@ -530,14 +530,14 @@ export default function UsersPage() {
 
       <form
         onSubmit={handleSubmit}
-        className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+        className="rounded-card border border-slate-200 bg-white p-6 shadow-sm"
       >
 
         <div className="flex items-center justify-between gap-4">
 
           <div>
 
-            <p className="text-sm font-semibold uppercase tracking-wider text-emerald-600">
+            <p className="text-sm font-semibold uppercase tracking-wider text-cobalt-600">
               {editingId
                 ? "Editar usuário"
                 : "Novo usuário"}
@@ -582,7 +582,7 @@ export default function UsersPage() {
                   event.target.value
                 )
               }
-              className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-emerald-500"
+              className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-cobalt-500"
             />
 
           </div>
@@ -603,7 +603,7 @@ export default function UsersPage() {
                   event.target.value
                 )
               }
-              className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-emerald-500"
+              className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-cobalt-500"
             />
 
           </div>
@@ -769,7 +769,7 @@ export default function UsersPage() {
 
 
         {message && (
-          <div className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">
+          <div className="mt-5 rounded-xl border border-cobalt-200 bg-cobalt-50 p-4 text-sm text-cobalt-700">
             {message}
           </div>
         )}
@@ -778,7 +778,7 @@ export default function UsersPage() {
         <button
           type="submit"
           disabled={saving}
-          className="mt-6 flex items-center gap-2 rounded-xl bg-emerald-500 px-5 py-3 text-sm font-bold text-slate-950 disabled:opacity-50"
+          className="mt-6 flex items-center gap-2 rounded-xl bg-cobalt-500 transition hover:bg-cobalt-600 px-5 py-3 text-sm font-bold text-white disabled:opacity-50"
         >
 
           {editingId ? (
@@ -798,7 +798,7 @@ export default function UsersPage() {
       </form>
 
 
-      <section className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <section className="mt-6 overflow-hidden rounded-card border border-slate-200 bg-white shadow-sm">
 
         <div className="border-b border-slate-200 p-6">
 
@@ -818,7 +818,7 @@ export default function UsersPage() {
 
           <table className="w-full min-w-[1000px] text-left text-sm">
 
-            <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+            <thead className="bg-ice text-xs uppercase text-slate-500">
 
               <tr>
                 <th className="px-5 py-4">
@@ -909,7 +909,7 @@ export default function UsersPage() {
                       <span
                         className={
                           user.ativo
-                            ? "font-semibold text-emerald-600"
+                            ? "font-semibold text-cobalt-600"
                             : "font-semibold text-red-600"
                         }
                       >
@@ -965,7 +965,7 @@ export default function UsersPage() {
                           className={
                             user.ativo
                               ? "flex items-center gap-1 rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-600"
-                              : "flex items-center gap-1 rounded-lg border border-emerald-200 px-3 py-2 text-xs font-semibold text-emerald-600"
+                              : "flex items-center gap-1 rounded-lg border border-cobalt-200 px-3 py-2 text-xs font-semibold text-cobalt-600"
                           }
                         >
 

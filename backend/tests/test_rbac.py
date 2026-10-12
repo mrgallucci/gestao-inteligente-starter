@@ -116,7 +116,7 @@ def test_aluno_cannot_write_crm_or_sales(client, make_user, create_lead, course_
 def test_public_ebook_endpoint_needs_no_auth_but_requires_consent(client):
     payload = {"nome": "Ana", "email": "ana@exemplo.com", "consentimento": True}
     assert client.post("/api/public/leads/ebook", json=payload).status_code == 201
-    # E-mail repetido não cria outro Lead.
-    assert client.post("/api/public/leads/ebook", json=payload).status_code == 409
+    # E-mail repetido NÃO bloqueia o fluxo e NÃO cria outro Lead (2.1.0-rc.1).
+    assert client.post("/api/public/leads/ebook", json=payload).status_code == 201
     no_consent = {"nome": "Bia", "email": "bia@exemplo.com", "consentimento": False}
     assert client.post("/api/public/leads/ebook", json=no_consent).status_code == 400

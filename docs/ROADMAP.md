@@ -30,4 +30,6 @@ Vêm da auditoria (`AUDITORIA.md`) e não alteram o produto:
 - Imagens Docker sem root; migrations como etapa separada do deploy com múltiplas instâncias.
 - Dividir `main.py` por domínio (CRM, vendas, LMS, usuários) com testes já existentes como rede de segurança.
 - Content-Security-Policy no frontend (testando em navegador).
-- E2E de navegador (Playwright) sobre o roteiro de `HOMOLOGACAO.md`.
+- E2E de navegador (Playwright): iniciado na 2.1.0-rc.1 (`e2e/`, fluxo Produto → Curso → Venda → Matrícula); ampliar para o restante do roteiro de `HOMOLOGACAO.md` após a primeira execução verde.
+- E-mail: fila/retry, descadastro automatizado, convite comercial agendado e provedor definitivo (ver `DECISOES_2.1.0-rc.1.md`).
+- Hospedar a fonte Inter e substituir o símbolo oficial; lockups com texto em curvas da SARGTECH.

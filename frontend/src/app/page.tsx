@@ -163,11 +163,11 @@ export default async function DashboardPage() {
     <div className="mx-auto max-w-7xl">
 
       <header className="mb-8">
-        <p className="text-sm font-semibold uppercase tracking-wider text-emerald-600">
+        <p className="text-sm font-semibold uppercase tracking-wider text-cobalt-600">
           Business Intelligence
         </p>
 
-        <h1 className="mt-1 text-3xl font-bold tracking-tight text-slate-950">
+        <h1 className="mt-1 text-3xl font-bold tracking-tight text-midnight">
           Dashboard comercial
         </h1>
 
@@ -275,9 +275,9 @@ export default async function DashboardPage() {
 
       <section className="mt-6 grid gap-6 lg:grid-cols-2">
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="rounded-card border border-slate-200 bg-white p-6 shadow-sm">
 
-          <h2 className="text-lg font-bold text-slate-950">
+          <h2 className="text-lg font-bold text-midnight">
             Funil comercial
           </h2>
 
@@ -310,7 +310,7 @@ export default async function DashboardPage() {
 
                     <div className="h-3 overflow-hidden rounded-full bg-slate-100">
                       <div
-                        className="h-full rounded-full bg-emerald-500"
+                        className="h-full rounded-full bg-cobalt-500"
                         style={{
                           width:
                             item.total === 0
@@ -330,9 +330,9 @@ export default async function DashboardPage() {
         </div>
 
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="rounded-card border border-slate-200 bg-white p-6 shadow-sm">
 
-          <h2 className="text-lg font-bold text-slate-950">
+          <h2 className="text-lg font-bold text-midnight">
             Conversão por origem
           </h2>
 
@@ -346,7 +346,7 @@ export default async function DashboardPage() {
               (item) => (
                 <div
                   key={item.origem}
-                  className="rounded-xl bg-slate-50 p-4"
+                  className="rounded-xl bg-ice p-4"
                 >
                   <div className="flex justify-between">
 
@@ -354,7 +354,7 @@ export default async function DashboardPage() {
                       {item.origem}
                     </strong>
 
-                    <strong className="text-emerald-600">
+                    <strong className="text-cobalt-600">
                       {item.conversao.toFixed(
                         2
                       )}%
@@ -380,9 +380,9 @@ export default async function DashboardPage() {
 
       <section className="mt-6 grid gap-6 lg:grid-cols-2">
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="rounded-card border border-slate-200 bg-white p-6 shadow-sm">
 
-          <h2 className="text-lg font-bold text-slate-950">
+          <h2 className="text-lg font-bold text-midnight">
             Receita por produto
           </h2>
 
@@ -454,9 +454,9 @@ export default async function DashboardPage() {
         </div>
 
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="rounded-card border border-slate-200 bg-white p-6 shadow-sm">
 
-          <h2 className="text-lg font-bold text-slate-950">
+          <h2 className="text-lg font-bold text-midnight">
             Receita por origem
           </h2>
 

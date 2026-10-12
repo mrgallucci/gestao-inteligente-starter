@@ -7,7 +7,7 @@ from decimal import Decimal
 
 import jwt
 
-from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
+from fastapi import BackgroundTasks, Depends, FastAPI, File, HTTPException, UploadFile
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -25,13 +25,15 @@ from argon2.exceptions import InvalidHashError, VerificationError, VerifyMismatc
 from sqlalchemy import case, func, text
 from sqlalchemy.orm import Session
 
-from database import engine, get_db
+from database import SessionLocal, get_db
+import email_service
 
 from models import (
     Campaign,
     ContentProgress,
     Course,
     CourseContent,
+    EmailLog,
     Enrollment,
     Interaction,
     Lead,
@@ -48,7 +50,7 @@ from models import (
 
 app = FastAPI(
     title="Gestão Inteligente API — SARGTECH",
-    version="2.0.2-rc.3",
+    version="2.1.0-rc.4",
 )
 
 
@@ -348,9 +350,24 @@ class CampaignCreate(BaseModel):
 
 class CourseCreate(BaseModel):
     product_id: int
-    nome: str
+    nome: str = Field(min_length=1, max_length=150)
     descricao: str | None = None
     ativo: bool = True
+
+    @field_validator("nome")
+    @classmethod
+    def _strip_course_nome(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Nome é obrigatório.")
+        return value
+
+    @field_validator("descricao")
+    @classmethod
+    def _strip_course_descricao(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return value.strip() or None
 
 
 class CourseContentCreate(BaseModel):
@@ -1397,8 +1414,88 @@ def dashboard_summary(
 
 
 # =========================================================
+# E-MAIL PÓS E-BOOK
+# =========================================================
+
+
+def send_ebook_delivery_email(lead_id: int) -> None:
+    """Envia o e-mail de entrega do material e registra o resultado.
+
+    Usa sessão própria (executa após a resposta). Nunca levanta exceção.
+    """
+    try:
+        settings = email_service.load_settings()
+        if not settings.enabled:
+            return  # feature flag desligada: nada é enviado nem registrado
+
+        with SessionLocal() as db:
+            lead = db.query(Lead).filter(Lead.id == lead_id).first()
+            if not lead or not lead.email:
+                return
+
+            result = email_service.send_template(
+                template=email_service.TEMPLATE_DELIVERY,
+                nome=lead.nome,
+                email=lead.email,
+                consentimento=lead.consentimento_contato,
+                settings=settings,
+            )
+            db.add(
+                EmailLog(
+                    lead_id=lead.id,
+                    destinatario=lead.email,
+                    template=result.template,
+                    provider=result.provider,
+                    status=result.status,
+                    detalhe=result.detail,
+                )
+            )
+            if result.status == "enviado":
+                db.add(
+                    Interaction(
+                        lead_id=lead.id,
+                        tipo="E-mail automático",
+                        descricao="Entrega do e-book enviada por e-mail automático.",
+                        resultado="Enviado",
+                    )
+                )
+            db.commit()
+    except Exception:  # noqa: BLE001 - nunca pode afetar o fluxo do Lead
+        email_service.logger.exception("Falha inesperada na automação de e-mail do lead %s", lead_id)
+
+
+@app.get("/api/email-logs")
+def list_email_logs(
+    current_user: User = Depends(require_roles("admin")),
+    db: Session = Depends(get_db),
+):
+    rows = db.query(EmailLog).order_by(EmailLog.id.desc()).limit(100).all()
+    return [
+        {
+            "id": row.id,
+            "lead_id": row.lead_id,
+            "destinatario": row.destinatario,
+            "template": row.template,
+            "provider": row.provider,
+            "status": row.status,
+            "detalhe": row.detalhe,
+            "criado_em": row.criado_em,
+        }
+        for row in rows
+    ]
+
+
+# =========================================================
 # LEADS
 # =========================================================
+
+# Resposta pública ÚNICA (mesmo HTTP 201 e mesmo corpo) para e-mail novo e e-mail já
+# existente: impede enumeração de e-mails cadastrados. Não incluir id, nome, status ou
+# qualquer flag created/reused aqui.
+EBOOK_PUBLIC_RESPONSE = {
+    "mensagem": "Solicitação registrada com sucesso. Verifique seu e-mail.",
+}
+
 
 @app.post(
     "/api/public/leads/ebook",
@@ -1406,6 +1503,7 @@ def dashboard_summary(
 )
 def create_ebook_lead(
     data: EbookLeadCreate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ):
     nome = data.nome.strip()
@@ -1438,10 +1536,23 @@ def create_ebook_lead(
     )
 
     if lead_existente:
-        raise HTTPException(
-            status_code=409,
-            detail="Lead já cadastrado.",
+        # E-mail já conhecido: NÃO cria duplicata e NÃO bloqueia o fluxo. Reutiliza o
+        # Lead, registra o novo download na linha do tempo e dispara o e-mail conforme
+        # o consentimento. A resposta é idêntica à de e-mail novo (EBOOK_PUBLIC_RESPONSE).
+        lead_existente.consentimento_contato = True  # consentimento dado neste download
+        db.add(
+            Interaction(
+                lead_id=lead_existente.id,
+                tipo="Download e-book",
+                descricao="Novo download do e-book gratuito por este contato.",
+                resultado="Registrado",
+            )
         )
+        db.commit()
+
+        background_tasks.add_task(send_ebook_delivery_email, lead_existente.id)
+
+        return dict(EBOOK_PUBLIC_RESPONSE)
 
     novo_lead = Lead(
         nome=nome,
@@ -1479,13 +1590,11 @@ def create_ebook_lead(
     db.commit()
     db.refresh(novo_lead)
 
-    return {
-        "id": novo_lead.id,
-        "nome": novo_lead.nome,
-        "email": novo_lead.email,
-        "status": novo_lead.status,
-        "mensagem": "Lead cadastrado com sucesso.",
-    }
+    # E-mail pós-download: roda DEPOIS do commit e fora da requisição. Qualquer
+    # falha do provedor fica registrada, mas nunca desfaz nem bloqueia o Lead.
+    background_tasks.add_task(send_ebook_delivery_email, novo_lead.id)
+
+    return dict(EBOOK_PUBLIC_RESPONSE)
 
 @app.get("/api/leads")
 def list_leads(
@@ -1831,6 +1940,109 @@ def list_followups(
     return items
 
 
+def describe_sale_delivery(sale, course, enrollments_by_key) -> dict:
+    """Entrega de uma venda, separando TIPO de STATUS (2.1.0-rc.1).
+
+    - `entrega_tipo`: o que o produto entrega — "LMS" (produto com curso) ou None.
+    - `entrega_status`: situação real — "Acesso liberado", "Aguardando pagamento",
+      "Acesso suspenso", "Matrícula não gerada" (venda paga sem matrícula; estado de ATENÇÃO) ou
+      "Não aplicável" (produto sem curso, curso inativo ou venda cancelada/reembolsada
+      que nunca gerou acesso).
+    - `aviso`: texto de alerta quando há algo que o operador precisa saber (curso inativo).
+    """
+    base = {
+        "entrega_tipo": None,
+        "entrega_status": "Não aplicável",
+        "entrega_detalhe": "Este produto não libera curso.",
+        "aviso": None,
+        "curso_id": None,
+        "curso_nome": None,
+        "curso_ativo": None,
+        "matricula_status": None,
+    }
+    if course is None:
+        return base
+
+    base.update(
+        {
+            "entrega_tipo": "LMS",
+            "curso_id": course.id,
+            "curso_nome": course.nome,
+            "curso_ativo": course.ativo,
+        }
+    )
+    if not course.ativo:
+        base.update(
+            {
+                "entrega_status": "Não aplicável",
+                "entrega_detalhe": "O curso vinculado está inativo e não libera acesso.",
+                "aviso": "Curso inativo: a venda é válida, mas não gera matrícula.",
+            }
+        )
+        return base
+
+    enrollment = enrollments_by_key.get((sale.lead_id, course.id))
+    base["matricula_status"] = enrollment.status if enrollment else None
+    suspended = enrollment is not None and enrollment.status == "Acesso suspenso"
+
+    if sale.status_pagamento == "Pago":
+        if enrollment is None:
+            base.update(
+                {
+                    "entrega_status": "Matrícula não gerada",
+                    "entrega_detalhe": "Venda paga sem matrícula gerada (ex.: curso vinculado depois da venda).",
+                    "aviso": (
+                        "Atenção: esta venda paga não gerou matrícula. Não há concessão "
+                        "retroativa automática; a liberação depende de decisão operacional."
+                    ),
+                }
+            )
+        elif suspended:
+            base.update(
+                {
+                    "entrega_status": "Acesso suspenso",
+                    "entrega_detalhe": "Matrícula suspensa por outra venda cancelada/reembolsada.",
+                }
+            )
+        else:
+            base.update(
+                {
+                    "entrega_status": "Acesso liberado",
+                    "entrega_detalhe": f"Acesso ao curso “{course.nome}” liberado.",
+                }
+            )
+    elif sale.status_pagamento == "Pendente":
+        base.update(
+            {
+                "entrega_status": "Aguardando pagamento",
+                "entrega_detalhe": f"“{course.nome}” será liberado quando o pagamento for confirmado.",
+            }
+        )
+    else:  # Cancelado / Reembolsado
+        if suspended:
+            base.update(
+                {
+                    "entrega_status": "Acesso suspenso",
+                    "entrega_detalhe": f"Pagamento {sale.status_pagamento.lower()}: acesso suspenso.",
+                }
+            )
+        elif enrollment is not None:
+            base.update(
+                {
+                    "entrega_status": "Acesso liberado",
+                    "entrega_detalhe": "Acesso mantido por outra venda paga do mesmo curso.",
+                }
+            )
+        else:
+            base.update(
+                {
+                    "entrega_status": "Não aplicável",
+                    "entrega_detalhe": f"Pagamento {sale.status_pagamento.lower()}: não gerou acesso.",
+                }
+            )
+    return base
+
+
 # =========================================================
 # PRODUTOS
 # =========================================================
@@ -1841,13 +2053,29 @@ def list_products(
     current_user: User = Depends(require_roles("admin", "vendedor")),
     db: Session = Depends(get_db),
 ):
-    return (
-        db.query(Product)
-        .order_by(
-            Product.id.desc()
-        )
+    rows = (
+        db.query(Product, Course)
+        .outerjoin(Course, Course.product_id == Product.id)
+        .order_by(Product.id.desc())
         .all()
     )
+
+    return [
+        {
+            "id": product.id,
+            "nome": product.nome,
+            "descricao": product.descricao,
+            "preco": product.preco,
+            "ativo": product.ativo,
+            "criado_em": product.criado_em,
+            # Curso vinculado (relação 1 Produto → no máximo 1 Curso).
+            "curso_id": course.id if course else None,
+            "curso_nome": course.nome if course else None,
+            "curso_ativo": course.ativo if course else None,
+            "libera_lms": bool(course and course.ativo),
+        }
+        for product, course in rows
+    ]
 
 
 @app.post(
@@ -1906,6 +2134,14 @@ def list_sales(
         .all()
     )
 
+    courses_by_product = {
+        course.product_id: course for course in db.query(Course).all()
+    }
+    enrollments_by_key = {
+        (enrollment.lead_id, enrollment.course_id): enrollment
+        for enrollment in db.query(Enrollment).all()
+    }
+
     return [
         {
             "id": venda.id,
@@ -1939,6 +2175,12 @@ def list_sales(
 
             "criado_em":
                 venda.criado_em,
+
+            **describe_sale_delivery(
+                venda,
+                courses_by_product.get(venda.product_id),
+                enrollments_by_key,
+            ),
         }
         for venda, lead, produto
         in vendas
