@@ -19,16 +19,21 @@ cd e2e && npm ci && npm run install:browsers && npm test
 Variáveis opcionais: `E2E_BASE_URL`, `E2E_API_URL`, `E2E_ADMIN_EMAIL`, `E2E_ADMIN_PASSWORD`.
 O E2E fica em pasta própria para não alterar o `package-lock.json` do frontend.
 
-## Lockfile (instalação determinística)
+## Lockfile e `npm ci`
 
-O CI usa `npm ci` e **exige `e2e/package-lock.json` versionado**. O lockfile não pôde ser
-gerado no ambiente que produziu a 2.1.0-rc.4 (sem acesso ao registry npm) e **não foi
-fabricado à mão**. Gere-o uma única vez, sem alterar versões (`package.json` fixa
-`@playwright/test` em `1.55.0`), e faça commit:
+O CI usa `npm ci` (nunca `npm install`) e exige `e2e/package-lock.json` versionado, com
+`@playwright/test` **1.55.1**. O lockfile foi gerado e versionado pela gerência no repositório
+homologado; **não o recrie nem altere a versão**. Se o arquivo estiver ausente, o job falha de
+propósito com mensagem explicativa.
 
-```bash
-cd e2e && npm install --package-lock-only && git add package-lock.json
-```
+## Sincronização dos testes (rc.5)
 
-Enquanto o arquivo não existir, o job `e2e` falha de propósito com mensagem explicativa
-(o job é `continue-on-error` — temporário, até a primeira execução verde aprovada pela gerência).
+- **Login:** função `loginAsAdmin(page)` usada por todos os testes; só retorna depois de
+  `expect(page).not.toHaveURL(/\/login/)` (cookie de sessão criado). Cada teste usa o seu `page`.
+- **Criação de Curso:** o teste não depende da mensagem transitória do formulário (o
+  `router.refresh()` remonta a árvore). Aguarda o `POST /api/backend/api/courses`, exige status 2xx
+  e confirma o "Curso vinculado" em `/products`.
+- **Banco descartável:** nunca aponte o E2E para base real/homologação.
+
+O job `e2e` segue `continue-on-error: true` (temporário) até a primeira execução verde
+aprovada pela gerência, que removerá a flag e reexecutará o workflow.

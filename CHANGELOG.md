@@ -1,5 +1,23 @@
 # Changelog
 
+## 2.1.0-rc.5 — correções de E2E/CI (2026-10-12)
+
+Somente correções de teste e de workflow. **Nenhuma funcionalidade nova, nenhuma regra de negócio alterada, N1–N4 intactas.** Código de produção inalterado (apenas a string de versão da API).
+
+### Contexto (informado pela gerência sobre a rc.4)
+- A rc.4 passou **Backend, Frontend e Docker no GitHub Actions** (204/204 testes backend, PostgreSQL/Alembic sem drift, npm ci, audit, typecheck, lint, build, homologação manual e N1–N4).
+- O **E2E da rc.4 falhou por sincronização/asserção do teste**, não por defeito de regra de negócio. **Nenhuma falha de N1–N4 foi identificada.**
+- O workflow falhava nos steps "Logs" e "Derruba a stack" porque **`CI_JWT_SECRET` não persistia entre steps**.
+
+### Correções
+1. **E2E — criação de curso:** o teste esperava a mensagem transitória "Curso criado e vinculado ao produto.", que some quando `router.refresh()` remonta a árvore. Agora aguarda a resposta `POST …/api/backend/api/courses` (2xx) e confirma "Curso vinculado" em `/products`. A regra e a mensagem da interface não mudaram.
+2. **E2E — race de login:** helper `loginAsAdmin(page)` compartilhado, que aguarda `not.toHaveURL(/\/login/)` antes de navegar; usado pelos dois testes. `page`/`context` não são compartilhados.
+3. **CI — `CI_JWT_SECRET`:** o step "Sobe a stack" grava a variável em `$GITHUB_ENV` (com `::add-mask::`), de modo que "Logs em caso de falha" e "Derruba a stack" (`down -v`, `if: always()`) também a recebem. Segredo temporário de banco/stack descartável; nada commitado.
+4. **Playwright:** `@playwright/test` 1.55.1, `npm ci` e `e2e/package-lock.json` mantidos (lockfile versionado pela gerência).
+5. **`continue-on-error: true` mantido.** A gerência removerá a flag após a primeira execução E2E totalmente verde.
+
+> **Validação desta rc.5:** nada executado (sem registry npm/PyPI/Docker/GitHub Actions neste ambiente). Playwright **não** é declarado verde.
+
 ## 2.1.0-rc.4 — fechamento técnico: anti-enumeração no e-book e E2E determinístico (2026-10-11)
 
 Somente os refinamentos abaixo. **Nenhum módulo novo, nenhuma feature de negócio nova, nenhuma regra aprovada alterada** (N1–N4, matrícula retroativa, Produto → Curso, entrega LMS, identidade, JWT/BFF, RBAC, limpeza, e-mail comercial, fornecedor e roadmap intactos).

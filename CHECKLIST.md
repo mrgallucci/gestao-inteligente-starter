@@ -1,4 +1,4 @@
-# Checklist — Gestão Inteligente 2.1.0-rc.4
+# Checklist — Gestão Inteligente 2.1.0-rc.5
 
 Legenda: ✅ concluído | 🔌 depende de provedor/credencial externo | 🚀 configuração de ambiente de publicação | 🧪 escrito, aguardando primeira execução
 
@@ -105,10 +105,10 @@ Legenda: ✅ concluído | 🔌 depende de provedor/credencial externo | 🚀 con
 - 🚀 Homologação com a operação real do SargLab (`docs/HOMOLOGACAO.md`).
 - Roadmap futuro separado em `docs/ROADMAP.md`.
 
-## 2.1.0-rc.4
+## 2.1.0-rc.5
 - ✅ Implementado: criação de Curso pela UI; vínculo Produto→Curso visível em Produtos e Vendas; coluna "Entrega".
 - ✅ Implementado: camada de e-mail desligada por padrão + `email_logs` (migration `b7d2f4a91c33`).
 - ✅ Implementado: script de limpeza com dry-run, aprovação por ID e transação.
 - ✅ Implementado: tokens SARGTECH v0.1, Kanban com "Salvando…" e rollback.
 - 🧪 Aguardando execução: `pytest` (162 + novos), `alembic upgrade head`/drift, `npm ci`, audit, typecheck, lint, build, Docker, CI, E2E.
-- 👤 Pendente: homologação manual (`docs/HOMOLOGACAO.md` §G), limpeza real na cópia do banco, aprovação visual, decisões de `docs/DECISOES_2.1.0-rc.4.md`.
+- 👤 Pendente: homologação manual (`docs/HOMOLOGACAO.md` §G), limpeza real na cópia do banco, aprovação visual, decisões de `docs/DECISOES_2.1.0-rc.5.md`.

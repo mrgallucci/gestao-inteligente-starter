@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 const API = process.env.E2E_API_URL ?? "http://127.0.0.1:8000";
 const ADMIN_EMAIL = process.env.E2E_ADMIN_EMAIL ?? "admin-e2e@exemplo.local";
@@ -12,17 +12,27 @@ test.beforeAll(async ({ request }) => {
   });
 });
 
+/**
+ * Login único para todos os testes. Só retorna depois que a navegação saiu de /login,
+ * ou seja, depois que o cookie de sessão foi criado — evita a race de ir para outra
+ * página antes de a sessão existir. Cada teste usa o seu próprio `page` (sem compartilhar
+ * page/context entre testes).
+ */
+async function loginAsAdmin(page: Page) {
+  await page.goto("/login");
+  await page.getByPlaceholder("seu@email.com").fill(ADMIN_EMAIL);
+  await page.getByPlaceholder("Sua senha").fill(ADMIN_PASSWORD);
+  await page.getByRole("button", { name: /entrar/i }).click();
+  await expect(page).not.toHaveURL(/\/login/);
+}
+
 test("Login admin → Produto → Curso → Lead → Venda Paga → Matrícula", async ({ page }) => {
   const produto = `Produto E2E ${RUN}`;
   const curso = `Curso E2E ${RUN}`;
   const lead = `Lead E2E ${RUN}`;
 
   // 1. Login
-  await page.goto("/login");
-  await page.getByPlaceholder("seu@email.com").fill(ADMIN_EMAIL);
-  await page.getByPlaceholder("Sua senha").fill(ADMIN_PASSWORD);
-  await page.getByRole("button", { name: /entrar/i }).click();
-  await expect(page).not.toHaveURL(/\/login/);
+  await loginAsAdmin(page);
 
   // 2. Produto (sem curso ainda)
   await page.goto("/products");
@@ -33,12 +43,24 @@ test("Login admin → Produto → Curso → Lead → Venda Paga → Matrícula",
   const card = page.locator("article", { hasText: produto });
   await expect(card.getByText("Este produto não libera curso.")).toBeVisible();
 
-  // 3. Curso vinculado pela interface
+  // 3. Curso vinculado pela interface.
+  // A mensagem de sucesso do formulário é transitória (router.refresh() remonta a árvore
+  // porque o produto deixa de estar na lista de "sem curso"). Por isso o teste valida a
+  // RESPOSTA do POST e, depois, a consequência persistente em /products.
   await card.getByRole("link", { name: "Criar curso para este produto" }).click();
   await page.getByLabel("Nome do curso *").fill(curso);
-  await page.getByRole("button", { name: "Criar curso" }).click();
-  await expect(page.getByText("Curso criado e vinculado ao produto.")).toBeVisible();
+  const [courseResponse] = await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        response.url().includes("/api/backend/api/courses") &&
+        response.request().method() === "POST",
+    ),
+    page.getByRole("button", { name: "Criar curso" }).click(),
+  ]);
+  expect(courseResponse.ok(), `POST /api/courses retornou ${courseResponse.status()}`).toBeTruthy();
+
   await page.goto("/products");
+  await expect(page.locator("article", { hasText: produto }).getByText("Curso vinculado")).toBeVisible();
   await expect(page.locator("article", { hasText: produto }).getByText(curso)).toBeVisible();
 
   // 4. Lead
@@ -69,10 +91,7 @@ test("Produto sem curso: venda permitida, sem matrícula e explícito na interfa
   const produto = `Livro E2E ${RUN}`;
   const lead = `Lead sem curso ${RUN}`;
 
-  await page.goto("/login");
-  await page.getByPlaceholder("seu@email.com").fill(ADMIN_EMAIL);
-  await page.getByPlaceholder("Sua senha").fill(ADMIN_PASSWORD);
-  await page.getByRole("button", { name: /entrar/i }).click();
+  await loginAsAdmin(page);
 
   await page.goto("/products");
   await page.getByLabel("Nome").fill(produto);

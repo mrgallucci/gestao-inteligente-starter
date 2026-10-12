@@ -70,7 +70,13 @@ jobs:
       - name: Sobe a stack com banco descartável
         run: |
           cp backend/.env.example backend/.env
-          export CI_JWT_SECRET="$(head -c 48 /dev/urandom | base64 | tr -d '\n=+/')"
+          # JWT exclusivamente temporário (banco/stack descartável de CI). Persistido em
+          # GITHUB_ENV para que os steps seguintes ("Logs" e "Derruba a stack") também
+          # tenham a variável exigida pelo docker-compose.ci.yml. Nunca é commitado.
+          CI_JWT_SECRET="$(head -c 48 /dev/urandom | base64 | tr -d '\n=+/')"
+          echo "::add-mask::$CI_JWT_SECRET"
+          echo "CI_JWT_SECRET=$CI_JWT_SECRET" >> "$GITHUB_ENV"
+          export CI_JWT_SECRET
           docker compose -f docker-compose.yml -f docker-compose.ci.yml up --build -d --wait
       - name: Playwright
         working-directory: e2e

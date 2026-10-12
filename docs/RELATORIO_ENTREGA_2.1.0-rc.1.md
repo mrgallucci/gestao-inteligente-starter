@@ -1,4 +1,15 @@
-# Relatório de entrega — Gestão Inteligente 2.1.0-rc.4 (acumula rc.1–rc.3)
+# Relatório de entrega — Gestão Inteligente 2.1.0-rc.5 (acumula rc.1–rc.4)
+
+## RC 2.1.0-rc.5 (esta rodada)
+**IMPLEMENTADO:** E2E de criação de curso valida o POST (2xx) + "Curso vinculado" em `/products`; helper `loginAsAdmin` com espera de saída de `/login`; `CI_JWT_SECRET` persistido via `$GITHUB_ENV`; Playwright 1.55.1; docs e versão.
+**TESTADO:** nada executado neste ambiente. Evidência da gerência (rc.4): 204/204 backend, PostgreSQL/Alembic, frontend, Docker e homologação manual; Actions Backend/Frontend/Docker verdes.
+**NÃO TESTADO:** Playwright, GitHub Actions da rc.5, pytest/npm/Docker aqui.
+**RESULTADOS:** estáticos apenas (YAML do workflow válido; spec TypeScript sem diagnósticos de sintaxe).
+**PENDÊNCIAS:** gerência executa o Actions; na 1ª execução E2E verde remove `continue-on-error` e reexecuta; só então o E2E vira gate da versão estável. Sem promoção a 2.1.0.
+
+---
+
+# Histórico — rc.4
 
 ## RC 2.1.0-rc.4 (esta rodada)
 **IMPLEMENTADO:** resposta pública do e-book idêntica (HTTP 201 + corpo genérico) para e-mail novo/existente; workflow do E2E com `npm ci` e guarda de lockfile; comentário de remoção futura do `continue-on-error`; docs e versão.

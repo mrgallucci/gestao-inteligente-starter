@@ -258,3 +258,21 @@ CI:
 Playwright (1ª execução verde → remover continue-on-error):
 Homologação manual:
 ```
+
+
+### RC 2.1.0-rc.5 — estado de validação (2026-10-12)
+
+**Evidência da gerência sobre a rc.4 (branch `release/2.1.0-rc.4`, commit `b62b9124`):** 204/204 testes backend; PostgreSQL real em `b7d2f4a91c33`; Alembic sem drift; `npm ci`, audit de produção, typecheck, lint e build do frontend; homologação manual completa; N1–N4 homologadas manualmente; GitHub Actions: Backend GREEN, Frontend GREEN, Docker GREEN. **E2E Playwright falhou** (sincronização/asserção do teste) e `CI_JWT_SECRET` não persistia entre steps. Nenhuma falha de N1–N4.
+
+**Alterado na rc.5:** apenas `e2e/tests/produto-curso-venda.spec.ts` (helper de login; espera do POST de curso + checagem em `/products`), `.github/workflows/ci.yml` (`CI_JWT_SECRET` em `$GITHUB_ENV`), documentação e versão. Sem funcionalidade nova.
+
+**Verificado estaticamente aqui:** YAML do workflow; sintaxe TypeScript do spec (transpile, 0 diagnósticos).
+
+**NÃO executado aqui:** Playwright, GitHub Actions, pytest, npm, Docker. **Playwright NÃO é declarado verde**; a validação definitiva é o GitHub Actions executado pela gerência.
+
+```text
+GitHub Actions rc.5 — Backend:
+GitHub Actions rc.5 — Frontend:
+GitHub Actions rc.5 — Docker:
+GitHub Actions rc.5 — E2E (1ª execução verde → gerência remove continue-on-error):
+```

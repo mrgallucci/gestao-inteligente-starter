@@ -15,7 +15,7 @@ Status após a revisão da gerência (2026-10-10).
 | 8 | E2E | `continue-on-error` só até a 1ª execução verde; depois gate obrigatório. | Registrado; remover a flag do job `e2e` após a 1ª execução verde. |
 | 9 | Símbolo | Usar assets oficiais v0.1. | rc.3: SVGs oficiais aplicados. |
 | 10 | Download repetido do e-book | Reutilizar o Lead, registrar interação, permitir e-mail; resposta pública idêntica para novo/existente. | rc.2 reutilização; rc.4 resposta uniforme (HTTP 201 + corpo genérico). |
-| 11 | E2E determinístico | `npm ci` com lockfile; `continue-on-error` só até a 1ª execução verde. | rc.4: workflow com `npm ci`; **lockfile pendente de geração** (sem registry). |
+| 11 | E2E determinístico | `npm ci` com lockfile; `continue-on-error` só até a 1ª execução verde. | rc.4: workflow com `npm ci`; lockfile versionado pela gerência (Playwright 1.55.1). rc.5: testes sincronizados e `CI_JWT_SECRET` persistido; `continue-on-error` mantido até a 1ª execução verde. |
 
 ## Ainda em aberto (precisa de resposta)
 | # | Tema | Situação |
