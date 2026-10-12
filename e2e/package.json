@@ -1,7 +1,7 @@
 {
   "name": "gestao-inteligente-e2e",
   "private": true,
-  "version": "2.1.0-rc.5",
+  "version": "2.1.0",
   "description": "E2E (Playwright) isolado do frontend: não altera package-lock.json do app.",
   "scripts": {
     "test": "playwright test",

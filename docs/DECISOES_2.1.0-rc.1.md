@@ -12,10 +12,10 @@ Status após a revisão da gerência (2026-10-10).
 | 5 | Descadastro | Nada comercial em produção antes de mecanismo adequado. | rc.2: CTA comercial **bloqueado** com `APP_ENV=production`. |
 | 6 | Limpeza | Só em clone, dry-run, aprovação por ID; produtos/cursos/campanhas nunca automáticos. | Inalterado. |
 | 7 | `admin@teste.local` | Preservar na homologação. | Inalterado. |
-| 8 | E2E | `continue-on-error` só até a 1ª execução verde; depois gate obrigatório. | Registrado; remover a flag do job `e2e` após a 1ª execução verde. |
+| 8 | E2E | `continue-on-error` só até a 1ª execução verde; depois gate obrigatório. | `continue-on-error` removido após a 1ª execução verde (run `38284823908`: Backend, Frontend, Docker e E2E GREEN), no commit `7c95834e72e512422ccf5047184f3542adbf46f3`; o E2E é agora **gate obrigatório**. A 2ª execução, já com o gate bloqueante (run `38286043714`: Backend, Frontend, Docker e E2E Playwright gate obrigatório GREEN), também ficou GREEN. |
 | 9 | Símbolo | Usar assets oficiais v0.1. | rc.3: SVGs oficiais aplicados. |
 | 10 | Download repetido do e-book | Reutilizar o Lead, registrar interação, permitir e-mail; resposta pública idêntica para novo/existente. | rc.2 reutilização; rc.4 resposta uniforme (HTTP 201 + corpo genérico). |
-| 11 | E2E determinístico | `npm ci` com lockfile; `continue-on-error` só até a 1ª execução verde. | rc.4: workflow com `npm ci`; lockfile versionado pela gerência (Playwright 1.55.1). rc.5: testes sincronizados e `CI_JWT_SECRET` persistido; `continue-on-error` mantido até a 1ª execução verde. |
+| 11 | E2E determinístico | `npm ci` com lockfile; `continue-on-error` só até a 1ª execução verde. | rc.4: workflow com `npm ci`; lockfile versionado pela gerência (Playwright 1.55.1) — `npm ci` + lockfile mantidos. rc.5: corrigidas a sincronização/login do teste e a persistência de `CI_JWT_SECRET`. 1ª execução E2E GREEN (run `38284823908`); `continue-on-error` removido (commit `7c95834e72e512422ccf5047184f3542adbf46f3`); 2ª execução GREEN com E2E bloqueante (run `38286043714`). |
 
 ## Ainda em aberto (precisa de resposta)
 | # | Tema | Situação |

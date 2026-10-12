@@ -50,7 +50,7 @@ from models import (
 
 app = FastAPI(
     title="Gestão Inteligente API — SARGTECH",
-    version="2.1.0-rc.5",
+    version="2.1.0",
 )
 
 

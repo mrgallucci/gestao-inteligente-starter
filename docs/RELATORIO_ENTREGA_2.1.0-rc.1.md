@@ -1,11 +1,15 @@
-# Relatório de entrega — Gestão Inteligente 2.1.0-rc.5 (acumula rc.1–rc.4)
+# Relatório de entrega — Gestão Inteligente 2.1.0 estável (acumula rc.1–rc.5)
 
-## RC 2.1.0-rc.5 (esta rodada)
+> **Status de release: 2.1.0 ESTÁVEL (2026-10-12).** Promovida da 2.1.0-rc.5 validada (GitHub Actions runs `38284823908` e `38286043714`: Backend, Frontend, Docker e E2E Playwright verdes; E2E é gate obrigatório). Nenhuma alteração funcional na promoção. O histórico técnico das RCs abaixo não foi reescrito.
+
+## RC 2.1.0-rc.5 (validada; promovida a 2.1.0 estável)
 **IMPLEMENTADO:** E2E de criação de curso valida o POST (2xx) + "Curso vinculado" em `/products`; helper `loginAsAdmin` com espera de saída de `/login`; `CI_JWT_SECRET` persistido via `$GITHUB_ENV`; Playwright 1.55.1; docs e versão.
-**TESTADO:** nada executado neste ambiente. Evidência da gerência (rc.4): 204/204 backend, PostgreSQL/Alembic, frontend, Docker e homologação manual; Actions Backend/Frontend/Docker verdes.
-**NÃO TESTADO:** Playwright, GitHub Actions da rc.5, pytest/npm/Docker aqui.
-**RESULTADOS:** estáticos apenas (YAML do workflow válido; spec TypeScript sem diagnósticos de sintaxe).
-**PENDÊNCIAS:** gerência executa o Actions; na 1ª execução E2E verde remove `continue-on-error` e reexecuta; só então o E2E vira gate da versão estável. Sem promoção a 2.1.0.
+**TESTADO (GitHub Actions, informado pela gerência):**
+- 1ª execução, run `38284823908`: Backend GREEN, Frontend GREEN, Docker GREEN, E2E Playwright GREEN (E2E ainda com `continue-on-error`).
+- `continue-on-error` removido (commit `7c95834e72e512422ccf5047184f3542adbf46f3`): E2E passou a gate obrigatório.
+- 2ª execução, run `38286043714`, com o E2E bloqueante: Backend GREEN, Frontend GREEN, Docker GREEN, E2E Playwright (gate obrigatório) GREEN; stack descartável criada e derrubada com sucesso; workflow completo GREEN.
+**NÃO EXECUTADO NESTE AMBIENTE DE DESENVOLVIMENTO:** pytest, npm, Docker, Playwright e GitHub Actions; a evidência acima é a da gerência.
+**PENDÊNCIAS DA RELEASE 2.1.0:** nenhuma. Pendências de produção, tratadas à parte e que não são falha da release: publicação/ambiente, configuração de provedor de e-mail e URL comercial, limpeza real na cópia do banco, merge em `main` (decisão da gerência).
 
 ---
 

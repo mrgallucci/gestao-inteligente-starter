@@ -268,11 +268,33 @@ Homologação manual:
 
 **Verificado estaticamente aqui:** YAML do workflow; sintaxe TypeScript do spec (transpile, 0 diagnósticos).
 
-**NÃO executado aqui:** Playwright, GitHub Actions, pytest, npm, Docker. **Playwright NÃO é declarado verde**; a validação definitiva é o GitHub Actions executado pela gerência.
+**Não executado neste ambiente de desenvolvimento (histórico):** Playwright, GitHub Actions, pytest, npm, Docker. A validação definitiva foi o GitHub Actions executado pela gerência, com os resultados reais abaixo.
 
 ```text
-GitHub Actions rc.5 — Backend:
-GitHub Actions rc.5 — Frontend:
-GitHub Actions rc.5 — Docker:
-GitHub Actions rc.5 — E2E (1ª execução verde → gerência remove continue-on-error):
+Primeira execução — GitHub Actions run 38284823908 (E2E ainda continue-on-error):
+  Backend:  GREEN
+  Frontend: GREEN
+  Docker:   GREEN
+  E2E:      GREEN
+
+continue-on-error removido pela gerência (commit 7c95834e72e512422ccf5047184f3542adbf46f3); E2E passa a gate obrigatório.
+
+Segunda execução — GitHub Actions run 38286043714 (após a remoção do continue-on-error):
+  Backend:  GREEN
+  Frontend: GREEN
+  Docker:   GREEN
+  E2E Playwright (gate obrigatório): GREEN
+  Stack descartável criada e derrubada com sucesso; workflow completo GREEN.
+```
+
+### Release 2.1.0 estável (2026-10-12)
+
+Promovida da **2.1.0-rc.5** **sem alteração funcional**: somente versão (`VERSION`, string da API, versão do pacote E2E) e documentação de release. Nenhuma mudança em código funcional, regras (N1–N4), migrations, schema, dependências, Playwright, lockfiles, workflow ou testes.
+
+Evidência (GitHub Actions, informada pela gerência): run `38284823908` (Backend, Frontend, Docker e E2E GREEN, E2E ainda `continue-on-error`) e run `38286043714` (Backend, Frontend, Docker e E2E Playwright **gate obrigatório** GREEN). O E2E permanece gate obrigatório e usa somente banco descartável. Histórico técnico anterior preservado acima.
+
+```text
+Versão: 2.1.0
+Base: release/2.1.0-rc.5 (HEAD esperado 7c95834e72e512422ccf5047184f3542adbf46f3)
+Merge em main: não realizado nesta promoção (fora do escopo; decisão da gerência)
 ```

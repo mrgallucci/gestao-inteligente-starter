@@ -1,9 +1,12 @@
-# E2E (Playwright) — Gestão Inteligente 2.1.0-rc.1
+# E2E (Playwright) — Gestão Inteligente 2.1.0
 
 Cobre: Login admin → Produto → Curso → Lead → Venda Paga → Matrícula, e Produto sem Curso.
 
-> **Status:** escrito na 2.1.0-rc.1, **ainda não executado** (o ambiente de desenvolvimento
-> não tinha npm/navegador). Os seletores podem precisar de ajuste na primeira execução.
+> **Status:** executado com sucesso no GitHub Actions durante a rc.5 (informado pela gerência):
+> - 1ª execução (run `38284823908`): Backend, Frontend, Docker e E2E verdes, com o job `e2e` ainda em `continue-on-error`.
+> - A gerência removeu `continue-on-error` (commit `7c95834e72e512422ccf5047184f3542adbf46f3`), tornando o E2E **gate obrigatório**.
+> - 2ª execução (run `38286043714`): Backend, Frontend, Docker e E2E (gate obrigatório) verdes; stack descartável criada e derrubada com sucesso.
+> - O E2E usa sempre banco **descartável**; nunca aponte para base real ou de homologação.
 
 Use SEMPRE um banco descartável (o teste cria registros e depende do `bootstrap-admin`,
 que só funciona com banco sem usuários):
@@ -35,5 +38,4 @@ propósito com mensagem explicativa.
   e confirma o "Curso vinculado" em `/products`.
 - **Banco descartável:** nunca aponte o E2E para base real/homologação.
 
-O job `e2e` segue `continue-on-error: true` (temporário) até a primeira execução verde
-aprovada pela gerência, que removerá a flag e reexecutará o workflow.
+O job `e2e` é **gate obrigatório** do workflow: `continue-on-error` foi removido pela gerência após a 1ª execução verde (run `38284823908`) e a 2ª execução já com o gate bloqueante também ficou verde (run `38286043714`).

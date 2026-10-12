@@ -1,4 +1,4 @@
-# Checklist — Gestão Inteligente 2.1.0-rc.5
+# Checklist — Gestão Inteligente 2.1.0
 
 Legenda: ✅ concluído | 🔌 depende de provedor/credencial externo | 🚀 configuração de ambiente de publicação | 🧪 escrito, aguardando primeira execução
 
@@ -110,5 +110,11 @@ Legenda: ✅ concluído | 🔌 depende de provedor/credencial externo | 🚀 con
 - ✅ Implementado: camada de e-mail desligada por padrão + `email_logs` (migration `b7d2f4a91c33`).
 - ✅ Implementado: script de limpeza com dry-run, aprovação por ID e transação.
 - ✅ Implementado: tokens SARGTECH v0.1, Kanban com "Salvando…" e rollback.
-- 🧪 Aguardando execução: `pytest` (162 + novos), `alembic upgrade head`/drift, `npm ci`, audit, typecheck, lint, build, Docker, CI, E2E.
-- 👤 Pendente: homologação manual (`docs/HOMOLOGACAO.md` §G), limpeza real na cópia do banco, aprovação visual, decisões de `docs/DECISOES_2.1.0-rc.5.md`.
+- ✅ Validações automatizadas finais executadas e aprovadas no GitHub Actions (informado pela gerência):
+  - 1ª execução, run `38284823908`: Backend CI GREEN, Frontend CI GREEN, Docker CI GREEN, E2E Playwright GREEN (E2E ainda com `continue-on-error`).
+  - `continue-on-error` removido (commit `7c95834e72e512422ccf5047184f3542adbf46f3`): E2E passou a **gate obrigatório**.
+  - 2ª execução, run `38286043714`: Backend CI GREEN, Frontend CI GREEN, Docker CI GREEN, E2E Playwright GREEN, E2E gate obrigatório GREEN (stack descartável criada e derrubada; workflow GREEN).
+- 👤 Pendências de produção (não são falha da release 2.1.0): publicação/ambiente de produção; configuração de provedor de e-mail e URL comercial (e-mail segue desligado por padrão); limpeza real na cópia do banco (dry-run e aprovação por ID); decisões operacionais/de produção ainda abertas em `docs/DECISOES_2.1.0-rc.1.md` (itens C–H).
+
+## Status de release
+- ✅ **2.1.0 estável** (2026-10-12) — promovida da 2.1.0-rc.5 validada (runs `38284823908` e `38286043714`: Backend, Frontend, Docker e E2E Playwright verdes; E2E é gate obrigatório). Sem alteração funcional na promoção.

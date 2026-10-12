@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.1.0 — versão estável (2026-10-12)
+
+Promoção administrativa da **2.1.0-rc.5** validada. **Nenhuma alteração funcional entre a rc.5 validada e a 2.1.0 estável**: o diff contém somente versão (`VERSION`, string da API, versão do pacote E2E) e documentação de release. Sem mudança em regras de negócio (N1–N4 intactas), código funcional, migrations, schema, dependências, Playwright ou lockfiles.
+
+### Evidência de validação (GitHub Actions, informada pela gerência)
+- **1ª execução — run `38284823908`:** Backend GREEN, Frontend GREEN, Docker GREEN, E2E Playwright GREEN. Nesta execução o job `e2e` ainda estava com `continue-on-error`.
+- A gerência então **removeu `continue-on-error`**, tornando o **E2E gate obrigatório** (commit `7c95834e72e512422ccf5047184f3542adbf46f3`).
+- **2ª execução — run `38286043714`, já com o E2E como gate obrigatório:** Backend GREEN, Frontend GREEN, Docker GREEN, E2E Playwright (gate obrigatório) GREEN; stack descartável criada e derrubada com sucesso; workflow completo GREEN.
+- O E2E permanece **gate obrigatório** na versão estável e roda somente contra banco descartável.
+- Histórico técnico das RCs (rc.1–rc.5) mantido abaixo, sem reescrita.
+
 ## 2.1.0-rc.5 — correções de E2E/CI (2026-10-12)
 
 Somente correções de teste e de workflow. **Nenhuma funcionalidade nova, nenhuma regra de negócio alterada, N1–N4 intactas.** Código de produção inalterado (apenas a string de versão da API).
@@ -14,9 +25,11 @@ Somente correções de teste e de workflow. **Nenhuma funcionalidade nova, nenhu
 2. **E2E — race de login:** helper `loginAsAdmin(page)` compartilhado, que aguarda `not.toHaveURL(/\/login/)` antes de navegar; usado pelos dois testes. `page`/`context` não são compartilhados.
 3. **CI — `CI_JWT_SECRET`:** o step "Sobe a stack" grava a variável em `$GITHUB_ENV` (com `::add-mask::`), de modo que "Logs em caso de falha" e "Derruba a stack" (`down -v`, `if: always()`) também a recebem. Segredo temporário de banco/stack descartável; nada commitado.
 4. **Playwright:** `@playwright/test` 1.55.1, `npm ci` e `e2e/package-lock.json` mantidos (lockfile versionado pela gerência).
-5. **`continue-on-error: true` mantido.** A gerência removerá a flag após a primeira execução E2E totalmente verde.
+5. **`continue-on-error: true` mantido.** A gerência removerá a flag após a primeira execução E2E totalmente verde. *(Atualização: a flag foi removida pela gerência após a 1ª execução verde — run 38284823908; ver 2.1.0.)*
 
 > **Validação desta rc.5:** nada executado (sem registry npm/PyPI/Docker/GitHub Actions neste ambiente). Playwright **não** é declarado verde.
+>
+> **Atualização (2.1.0):** a rc.5 foi depois executada e validada no GitHub Actions (runs `38284823908` e `38286043714`, todos os jobs verdes, E2E como gate obrigatório na 2ª). Ver a seção 2.1.0.
 
 ## 2.1.0-rc.4 — fechamento técnico: anti-enumeração no e-book e E2E determinístico (2026-10-11)
 
