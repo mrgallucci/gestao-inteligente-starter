@@ -35,7 +35,7 @@ Nenhuma alteração de código foi feita. O mapeamento abaixo é por leitura dos
 | Requisito | Onde está coberto |
 |---|---|
 | Aluno não acessa o CRM admin | `tests/test_rbac.py` (rotas protegidas por `require_roles`) |
-| Aluno vê só a própria matrícula | `tests/test_ownership.py`, `tests/test_sales_lms_flow.py` (`/api/me/enrollments`) |
+| Aluno vê só a própria matrícula | `tests/test_ownership.py`, `tests/test_sales_lms_flow.py` (`/api/my/enrollments`) |
 | Matrícula suspensa bloqueia conteúdo | `tests/test_sales_lms_flow.py`, `tests/test_business_rules.py` (`validate_enrollment_access`) |
 | Admin e vendedor mantêm acesso | `tests/test_rbac.py` |
 
