@@ -1,5 +1,7 @@
 import os
 import re
+import threading
+import time
 import uuid
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
@@ -7,7 +9,7 @@ from decimal import Decimal
 
 import jwt
 
-from fastapi import BackgroundTasks, Depends, FastAPI, File, HTTPException, UploadFile
+from fastapi import BackgroundTasks, Depends, FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -37,6 +39,7 @@ from models import (
     Enrollment,
     Interaction,
     Lead,
+    LeadTouchpoint,
     Product,
     Sale,
     User,
@@ -442,8 +445,40 @@ class EbookLeadCreate(BaseModel):
     area_profissional: str | None = None
 
     origem: str = "direto"
+    utm_source: str | None = None
     utm_medium: str | None = None
     utm_campaign: str | None = None
+    utm_content: str | None = None
+    utm_term: str | None = None
+    referrer: str | None = None
+    landing_url: str | None = None
+    pagina: str | None = None
+    consentimento_versao: str | None = None
+
+    consentimento: bool
+
+
+class ContactLeadCreate(BaseModel):
+    """Formulário institucional do site (sargtech.com.br/contato e lista de aviso)."""
+
+    nome: str
+    email: str
+    empresa: str | None = None
+    telefone: str | None = None
+    assunto: str
+    mensagem: str
+    interesse: str | None = None
+
+    origem: str = "site-contato"
+    utm_source: str | None = None
+    utm_medium: str | None = None
+    utm_campaign: str | None = None
+    utm_content: str | None = None
+    utm_term: str | None = None
+    referrer: str | None = None
+    landing_url: str | None = None
+    pagina: str | None = None
+    consentimento_versao: str | None = None
 
     consentimento: bool
 
@@ -1489,6 +1524,140 @@ def list_email_logs(
 # LEADS
 # =========================================================
 
+# ---------------------------------------------------------------------------
+# Endpoints públicos: atribuição de campanha e limite de requisições
+# ---------------------------------------------------------------------------
+
+
+def _clip(value: str | None, limit: int) -> str | None:
+    """Texto de origem externa: remove espaços e corta no tamanho da coluna (nunca recusa o Lead)."""
+    if value is None:
+        return None
+    value = str(value).strip()
+    return value[:limit] or None
+
+
+def match_campaign(
+    db: Session,
+    utm_source: str | None,
+    utm_medium: str | None,
+    utm_campaign: str | None,
+) -> Campaign | None:
+    """Campanha ativa cujo utm_campaign (e, se cadastrados, source/medium) coincide com o acesso."""
+    if not utm_campaign:
+        return None
+    candidatas = (
+        db.query(Campaign)
+        .filter(
+            Campaign.ativo.is_(True),
+            func.lower(Campaign.utm_campaign) == utm_campaign.lower(),
+        )
+        .order_by(Campaign.id.desc())
+        .all()
+    )
+    for campanha in candidatas:
+        if campanha.utm_source and (
+            not utm_source or campanha.utm_source.lower() != utm_source.lower()
+        ):
+            continue
+        if campanha.utm_medium and (
+            not utm_medium or campanha.utm_medium.lower() != utm_medium.lower()
+        ):
+            continue
+        return campanha
+    return None
+
+
+def record_touchpoint(db: Session, lead: Lead, canal: str, data, origem: str | None) -> LeadTouchpoint:
+    """Persiste a atribuição deste envio. Exige `lead.id` (faça flush antes).
+
+    Se o Lead ainda não tem campanha e o utm_campaign corresponde a uma campanha
+    ativa, vincula o Lead a ela (primeiro toque), alimentando CPL/CAC/ROI existentes.
+    """
+    utm_source = _clip(data.utm_source, 120)
+    utm_medium = _clip(data.utm_medium, 120)
+    utm_campaign = _clip(data.utm_campaign, 180)
+    campanha = match_campaign(db, utm_source, utm_medium, utm_campaign)
+    if campanha is not None and lead.campaign_id is None:
+        lead.campaign_id = campanha.id
+    touchpoint = LeadTouchpoint(
+        lead_id=lead.id,
+        canal=canal,
+        origem=_clip(origem, 100),
+        utm_source=utm_source,
+        utm_medium=utm_medium,
+        utm_campaign=utm_campaign,
+        utm_content=_clip(data.utm_content, 180),
+        utm_term=_clip(data.utm_term, 180),
+        referrer=_clip(data.referrer, 500),
+        landing_url=_clip(data.landing_url, 500),
+        pagina=_clip(data.pagina, 200),
+        consentimento_versao=_clip(data.consentimento_versao, 60),
+        campaign_id=campanha.id if campanha is not None else None,
+    )
+    db.add(touchpoint)
+    return touchpoint
+
+
+class SlidingWindowLimiter:
+    """Limite por chave em janela deslizante, em memória (um processo).
+
+    Suficiente para a instância única atual. Com mais de uma instância, trocar por
+    um armazenamento compartilhado (ex.: Redis) ou limitar no proxy/CDN.
+    """
+
+    def __init__(self) -> None:
+        self._hits: dict[str, list[float]] = {}
+        self._lock = threading.Lock()
+
+    def allow(self, key: str, limit: int, window: float = 60.0, now: float | None = None) -> bool:
+        moment = time.monotonic() if now is None else now
+        with self._lock:
+            recent = [t for t in self._hits.get(key, []) if moment - t < window]
+            if len(recent) >= limit:
+                self._hits[key] = recent
+                return False
+            recent.append(moment)
+            self._hits[key] = recent
+            if len(self._hits) > 10000:  # evita crescimento indefinido
+                self._hits = {k: v for k, v in self._hits.items() if v and moment - v[-1] < window}
+            return True
+
+    def reset(self) -> None:
+        with self._lock:
+            self._hits.clear()
+
+
+PUBLIC_RATE_LIMITER = SlidingWindowLimiter()
+
+
+def _client_ip(request: Request) -> str:
+    # Atrás de proxy (Render), `request.client` é o proxy. Só confie no cabeçalho se
+    # TRUST_PROXY_HEADERS estiver ligado; usa o ÚLTIMO valor, anexado pelo proxy confiável.
+    if os.getenv("TRUST_PROXY_HEADERS", "").strip().lower() in {"1", "true", "yes"}:
+        forwarded = request.headers.get("x-forwarded-for", "")
+        if forwarded:
+            return forwarded.split(",")[-1].strip() or "desconhecido"
+    return request.client.host if request.client else "desconhecido"
+
+
+def public_rate_limit(request: Request) -> None:
+    """Dependência dos endpoints públicos. PUBLIC_RATE_LIMIT_PER_MIN (padrão 0 = desligado)."""
+    try:
+        limit = int(os.getenv("PUBLIC_RATE_LIMIT_PER_MIN", "0") or 0)
+    except ValueError:
+        limit = 0
+    if limit <= 0:
+        return
+    key = f"{request.url.path}|{_client_ip(request)}"
+    if not PUBLIC_RATE_LIMITER.allow(key, limit):
+        raise HTTPException(
+            status_code=429,
+            detail="Muitas tentativas. Aguarde um instante e tente novamente.",
+            headers={"Retry-After": "60"},
+        )
+
+
 # Resposta pública ÚNICA (mesmo HTTP 201 e mesmo corpo) para e-mail novo e e-mail já
 # existente: impede enumeração de e-mails cadastrados. Não incluir id, nome, status ou
 # qualquer flag created/reused aqui.
@@ -1505,6 +1674,7 @@ def create_ebook_lead(
     data: EbookLeadCreate,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
+    _rate: None = Depends(public_rate_limit),
 ):
     nome = data.nome.strip()
     email = data.email.strip().lower()
@@ -1548,6 +1718,7 @@ def create_ebook_lead(
                 resultado="Registrado",
             )
         )
+        record_touchpoint(db, lead_existente, "ebook", data, data.origem)
         db.commit()
 
         background_tasks.add_task(send_ebook_delivery_email, lead_existente.id)
@@ -1587,6 +1758,8 @@ def create_ebook_lead(
     )
 
     db.add(novo_lead)
+    db.flush()
+    record_touchpoint(db, novo_lead, "ebook", data, data.origem)
     db.commit()
     db.refresh(novo_lead)
 
@@ -1595,6 +1768,171 @@ def create_ebook_lead(
     background_tasks.add_task(send_ebook_delivery_email, novo_lead.id)
 
     return dict(EBOOK_PUBLIC_RESPONSE)
+
+CONTACT_PUBLIC_RESPONSE = {
+    "mensagem": "Mensagem recebida. Responderemos pelo contato informado.",
+}
+
+# Origens aceitas do site institucional -> valor gravado em Lead.origem (identificável no CRM).
+CONTACT_ORIGINS = {
+    "site-contato": "site-contato",
+    "sarglab-cursos-aviso": "site-sarglab-aviso",
+}
+
+
+@app.post(
+    "/api/public/leads/contact",
+    status_code=201,
+)
+def create_contact_lead(
+    data: ContactLeadCreate,
+    db: Session = Depends(get_db),
+    _rate: None = Depends(public_rate_limit),
+):
+    """Contato institucional. Endpoint próprio: não reutiliza o do e-book.
+
+    Mesma resposta (201) para e-mail novo e já conhecido, evitando enumeração.
+    O texto da mensagem vira uma Interação no Lead para o time comercial.
+    """
+    nome = (data.nome or "").strip()
+    email = (data.email or "").strip().lower()
+    assunto = (data.assunto or "").strip()
+    mensagem = (data.mensagem or "").strip()
+
+    if not nome:
+        raise HTTPException(status_code=400, detail="Nome é obrigatório.")
+    if not email or not _EMAIL_PATTERN.match(email) or len(email) > 255:
+        raise HTTPException(status_code=400, detail="E-mail inválido.")
+    if not assunto:
+        raise HTTPException(status_code=400, detail="Assunto é obrigatório.")
+    if len(mensagem) < 10:
+        raise HTTPException(status_code=400, detail="Mensagem muito curta.")
+    if len(mensagem) > 2500:
+        raise HTTPException(status_code=400, detail="Mensagem muito longa.")
+    if not data.consentimento:
+        raise HTTPException(status_code=400, detail="Consentimento é obrigatório.")
+
+    origem = CONTACT_ORIGINS.get((data.origem or "").strip(), "site-contato")
+    empresa = _clip(data.empresa, 150)
+    descricao = f"Assunto: {assunto}\n\n{mensagem}"
+
+    lead = db.query(Lead).filter(func.lower(Lead.email) == email).first()
+    if lead:
+        lead.consentimento_contato = True
+        if empresa and not lead.empresa:
+            lead.empresa = empresa
+        if data.telefone and not lead.telefone:
+            lead.telefone = _clip(data.telefone, 50)
+    else:
+        lead = Lead(
+            nome=nome[:150],
+            email=email,
+            telefone=_clip(data.telefone, 50),
+            empresa=empresa,
+            origem=origem,
+            objetivo=f"Contato pelo site: {assunto}"[:255],
+            status="Lead",
+            interesse="Médio",
+            tipo_cliente="B2B" if empresa else "B2C",
+            consentimento_contato=True,
+            dor_gatilho=mensagem,
+            oferta_interesse=_clip(data.interesse or assunto, 180),
+            contatos=0,
+        )
+        db.add(lead)
+        db.flush()
+
+    db.add(
+        Interaction(
+            lead_id=lead.id,
+            tipo="Contato pelo site",
+            descricao=descricao,
+            resultado="Recebido",
+        )
+    )
+    record_touchpoint(db, lead, "contato", data, origem)
+    db.commit()
+
+    return dict(CONTACT_PUBLIC_RESPONSE)
+
+
+@app.get("/api/leads/{lead_id}/touchpoints")
+def list_lead_touchpoints(
+    lead_id: int,
+    current_user: User = Depends(require_roles("admin", "vendedor")),
+    db: Session = Depends(get_db),
+):
+    if not db.query(Lead.id).filter(Lead.id == lead_id).first():
+        raise HTTPException(status_code=404, detail="Lead não encontrado")
+    rows = (
+        db.query(LeadTouchpoint)
+        .filter(LeadTouchpoint.lead_id == lead_id)
+        .order_by(LeadTouchpoint.id.asc())
+        .all()
+    )
+    return [
+        {
+            "id": row.id,
+            "canal": row.canal,
+            "origem": row.origem,
+            "utm_source": row.utm_source,
+            "utm_medium": row.utm_medium,
+            "utm_campaign": row.utm_campaign,
+            "utm_content": row.utm_content,
+            "utm_term": row.utm_term,
+            "referrer": row.referrer,
+            "landing_url": row.landing_url,
+            "pagina": row.pagina,
+            "campaign_id": row.campaign_id,
+            "criado_em": row.criado_em,
+        }
+        for row in rows
+    ]
+
+
+@app.get("/api/marketing-analytics/attribution")
+def marketing_attribution(
+    dias: int = 90,
+    current_user: User = Depends(require_roles("admin")),
+    db: Session = Depends(get_db),
+):
+    """Aquisição por canal e UTM: envios e Leads distintos, nos últimos `dias` (1 a 730)."""
+    dias = max(1, min(dias, 730))
+    desde = datetime.now() - timedelta(days=dias)
+    rows = (
+        db.query(
+            LeadTouchpoint.canal,
+            LeadTouchpoint.utm_source,
+            LeadTouchpoint.utm_medium,
+            LeadTouchpoint.utm_campaign,
+            func.count(LeadTouchpoint.id),
+            func.count(func.distinct(LeadTouchpoint.lead_id)),
+        )
+        .filter(LeadTouchpoint.criado_em >= desde)
+        .group_by(
+            LeadTouchpoint.canal,
+            LeadTouchpoint.utm_source,
+            LeadTouchpoint.utm_medium,
+            LeadTouchpoint.utm_campaign,
+        )
+        .order_by(func.count(LeadTouchpoint.id).desc())
+        .all()
+    )
+    return {
+        "dias": dias,
+        "itens": [
+            {
+                "canal": canal,
+                "utm_source": source or "(não informado)",
+                "utm_medium": medium or "(não informado)",
+                "utm_campaign": campaign or "(não informado)",
+                "envios": envios,
+                "leads": leads,
+            }
+            for canal, source, medium, campaign, envios, leads in rows
+        ],
+    }
+
 
 @app.get("/api/leads")
 def list_leads(
