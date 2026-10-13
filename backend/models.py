@@ -5,6 +5,7 @@ from sqlalchemy import (
     Boolean,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     Numeric,
     String,
@@ -57,6 +58,40 @@ class Lead(Base):
     formato_interesse: Mapped[str | None] = mapped_column(String(50), nullable=True)
     oferta_interesse: Mapped[str | None] = mapped_column(String(180), nullable=True)
 
+    campaign_id: Mapped[int | None] = mapped_column(
+        ForeignKey("campaigns.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    criado_em: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, nullable=False)
+
+
+class LeadTouchpoint(Base):
+    """Cada envio de formulário público (e-book, contato do site) com sua atribuição.
+
+    Guarda UTMs, referrer e URL da landing por ENVIO, para não perder o primeiro
+    toque quando o mesmo e-mail volta por outro canal. Alimenta a análise de
+    aquisição (`/api/marketing-analytics/attribution`).
+    """
+
+    __tablename__ = "lead_touchpoints"
+    __table_args__ = (
+        Index("ix_lead_touchpoints_utm", "utm_source", "utm_medium", "utm_campaign"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    lead_id: Mapped[int] = mapped_column(
+        ForeignKey("leads.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    canal: Mapped[str] = mapped_column(String(30), nullable=False)  # "ebook" | "contato"
+    origem: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    utm_source: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    utm_medium: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    utm_campaign: Mapped[str | None] = mapped_column(String(180), nullable=True)
+    utm_content: Mapped[str | None] = mapped_column(String(180), nullable=True)
+    utm_term: Mapped[str | None] = mapped_column(String(180), nullable=True)
+    referrer: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    landing_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    pagina: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    consentimento_versao: Mapped[str | None] = mapped_column(String(60), nullable=True)
     campaign_id: Mapped[int | None] = mapped_column(
         ForeignKey("campaigns.id", ondelete="SET NULL"), nullable=True, index=True
     )
