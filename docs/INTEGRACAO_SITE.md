@@ -44,11 +44,11 @@ Se algum falhar na execução local, o ajuste deve ser mínimo e feito sobre o r
 ## Item 9 — CORS
 
 O código lê `FRONTEND_URL` + `CORS_ORIGINS`. Para o cutover basta o valor abaixo no Render, **somente com autorização**:
-`CORS_ORIGINS=https://sargtech.com.br,https://www.sargtech.com.br,<origem atual do GitHub Pages>`
-O valor atual no Render é desconhecido para mim; conferir antes de editar para não remover origens em uso.
+`CORS_ORIGINS=https://sarg-tech.github.io,https://sargtech.com.br,https://www.sargtech.com.br` (FRONTEND_URL=https://crm.sargtech.com.br já entra automaticamente)
+Ordem: merge, migration, deploy do backend, homologação; só então a troca de CORS. Não ligar `TRUST_PROXY_HEADERS` em produção até validar o cabeçalho de IP no Render.
 
 ## Lacunas e riscos conhecidos
 
 - `/uploads` é público sem autenticação (limitação D1 já documentada em `docs/AUDITORIA.md`).
 - Não existe tela no frontend Next.js para a atribuição; apenas a API.
-- Não existe onboarding automático do usuário aluno (hoje o admin cria usuários em `/api/users`); precisa ser desenhado antes de vender (ver `MERCADO_PAGO.md`).
+- Onboarding do aluno após pagamento: decidido (token de ativação, sem senha temporária); implementação pendente, ver `MERCADO_PAGO.md`.

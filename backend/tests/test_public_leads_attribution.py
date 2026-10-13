@@ -235,8 +235,8 @@ def test_cors_accepts_site_domain_and_keeps_github_pages(monkeypatch):
     monkeypatch.setattr(main, "FRONTEND_URL", "https://crm.sargtech.com.br")
     monkeypatch.setenv(
         "CORS_ORIGINS",
-        "https://sargtech.com.br,https://www.sargtech.com.br,https://mrgallucci.github.io",
+        "https://sargtech.com.br,https://www.sargtech.com.br,https://sarg-tech.github.io",
     )
     origens = main._build_cors_origins()
-    for esperado in ("https://sargtech.com.br", "https://www.sargtech.com.br", "https://mrgallucci.github.io", "https://crm.sargtech.com.br"):
+    for esperado in ("https://sargtech.com.br", "https://www.sargtech.com.br", "https://sarg-tech.github.io", "https://crm.sargtech.com.br"):
         assert esperado in origens

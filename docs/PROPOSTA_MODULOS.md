@@ -1,30 +1,23 @@
-# Proposta — compra individual de módulos (para aprovação, SEM migration)
+# Oferta SargLab no lançamento — decisão registrada (Opção A)
 
-Fato do modelo atual: o acesso é concedido **por `Course`** (`Enrollment` = lead + curso). `CourseContent` pertence a um curso e **não existe entidade comercial de módulo**. Nada foi alterado.
+Decisão (13/10/2026): **Opção A**. Nenhuma migration para módulos avulsos. Nenhuma venda de M0, M1, M2 etc.
 
-Oferta divulgada hoje (da landing atual): Curso Básico (R$19,90 lançamento) e Programa Completo (R$149,90 lançamento = Curso Básico + Curso Avançado). O site V6 passou a mostrar só isso e removeu "módulos individuais".
+## Ofertas iniciais
+| Oferta | Preço de lançamento | O que concede |
+|---|---|---|
+| Curso Básico | R$ 19,90 | Matrícula no Curso Básico |
+| Programa Completo | R$ 149,90 | Pacote: matrículas no Curso Básico **e** no Curso Avançado |
 
-## Opções
+O Programa Completo é um **pacote**, não um terceiro curso com conteúdo duplicado. O Curso Avançado pode existir comercialmente depois, como upgrade/jornada específica; não recebe destaque na oferta inicial.
 
-**A. Curso/programa completo apenas (recomendada para o lançamento).** Cada oferta = um `Product` + um `Course`. Programa Completo pode ser um `Course` próprio ou conceder duas matrículas (Básico e Avançado) numa única venda.
-- Prós: zero mudança de schema; usa N1–N4 como estão.
-- Contras: não vende módulo avulso.
-- Ponto aberto: Programa Completo como 1 curso ou 2 matrículas por venda (a segunda exige pequena regra nova, mas sem mudar tabelas).
+## Restrição do modelo atual
+`Course.product_id` é 1:1 (um curso pertence a um produto). Portanto o produto "Programa Completo" não tem como apontar para dois cursos hoje. **Proibido** resolver isso com lógica hardcoded por nome ou ID de produto.
 
-**B. Compra individual = cada módulo vira um `Course` pequeno.** Sem mudar schema; o "programa" é um conjunto de cursos.
-- Prós: sem migration; já funciona com `Enrollment` por curso.
-- Contras: perde a noção de "curso com módulos" na UI; o Programa Completo precisa conceder N matrículas.
+## Requisito para a etapa de pagamentos (antes de ativar checkout)
+Relação explícita **produto → cursos concedidos**, por exemplo uma tabela pequena `product_course_grants` (`product_id`, `course_id`, unicidade do par). Regras:
+- Venda paga de um produto concede/restaura **uma matrícula por curso do grant**, reutilizando a lógica existente de `Enrollment` (N1–N4).
+- Produto sem linhas de grant mantém o comportamento atual (via `Course.product_id`), para não quebrar o que existe.
+- Reembolso suspende apenas as matrículas dos cursos que não tenham outra venda paga que os conceda (estender `has_other_paid_sale_for_course` para considerar os grants).
+- Os testes de RBAC/LMS existentes devem continuar passando; acrescentar testes do pacote.
 
-**C. Conjunto de conteúdos liberados (entitlement por conteúdo).** Nova tabela de relação (ex.: `product_contents`: produto → conteúdos) e checagem de acesso por conteúdo em vez de só por curso.
-- Prós: máxima flexibilidade (módulo avulso, bônus, bundles).
-- Contras: exige migration, muda `validate_enrollment_access`, `calculate_enrollment_progress` e os testes de RBAC/LMS; maior risco.
-
-## Recomendação
-
-Lançar com **A**. Só evoluir para B ou C se houver módulo avulso definido pela SARGTECH (nome, conteúdo, preço), o que ainda **não foi informado**. 
-
-## Decisões que preciso de você
-
-1. Programa Completo: um curso único ou Básico + Avançado como duas matrículas?
-2. Haverá venda de módulo avulso no lançamento? Se sim, quais módulos e preços?
-3. Aprovação da opção (A, B ou C) antes de qualquer migration.
+**Esta tabela não foi criada.** Será proposta junto com a migration de pagamentos, para aprovação.
