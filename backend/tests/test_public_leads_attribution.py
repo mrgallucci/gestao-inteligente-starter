@@ -15,7 +15,13 @@ ATTR = {
     "pagina": "/sarglab/ebook/",
     "consentimento_versao": "landing-2026-10-07",
 }
-EBOOK = {"nome": "Ana Lima", "email": "ana@exemplo.com", "area_profissional": "vendas", "consentimento": True}
+EBOOK = {
+    "nome": "Ana Lima",
+    "email": "ana@exemplo.com",
+    "whatsapp": "(24) 99999-0000",
+    "area_profissional": "vendas",
+    "consentimento": True,
+}
 CONTACT = {
     "nome": "Caio Dias",
     "email": "caio@empresa.com",
@@ -60,11 +66,41 @@ def test_ebook_persists_every_attribution_field(client, admin_headers):
 
 
 def test_ebook_without_attribution_still_works(client, admin_headers):
-    """Contrato antigo (landing GitHub Pages): sem campos novos, nada quebra."""
+    """Sem UTMs continua funcionando; telefone passa a ser obrigatório."""
     assert client.post("/api/public/leads/ebook", json=EBOOK).status_code == 201
     lead = _lead(client, admin_headers, "ana@exemplo.com")
     [tp] = _touchpoints(client, admin_headers, lead["id"])
     assert tp["utm_source"] is None and tp["landing_url"] is None
+    assert lead["telefone"] == "+5524999990000"
+
+
+@pytest.mark.parametrize(
+    "mudanca",
+    [
+        {"email": "sem-arroba"},
+        {"email": "x@x"},
+        {"whatsapp": ""},
+        {"whatsapp": "249999"},
+        {"whatsapp": "(20) 99999-0000"},
+        {"whatsapp": "(24) 89999-0000"},
+    ],
+)
+def test_ebook_rejects_invalid_email_or_whatsapp(client, mudanca):
+    assert client.post("/api/public/leads/ebook", json={**EBOOK, **mudanca}).status_code in (400, 422)
+
+
+def test_ebook_requires_whatsapp(client):
+    payload = {k: v for k, v in EBOOK.items() if k != "whatsapp"}
+    assert client.post("/api/public/leads/ebook", json=payload).status_code == 422
+
+
+def test_first_download_is_visible_in_lead_history(client, admin_headers):
+    assert client.post("/api/public/leads/ebook", json=EBOOK).status_code == 201
+    lead = _lead(client, admin_headers, "ana@exemplo.com")
+    interacoes = client.get(f"/api/leads/{lead['id']}/interactions", headers=admin_headers).json()
+    downloads = [i for i in interacoes if i["tipo"] == "Download e-book"]
+    assert len(downloads) == 1
+    assert downloads[0]["resultado"] == "Registrado"
 
 
 def test_second_download_keeps_first_touch_and_does_not_duplicate_lead(client, admin_headers):

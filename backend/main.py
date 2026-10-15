@@ -224,6 +224,33 @@ def _validate_email(value: str | None) -> str | None:
     return value
 
 
+_BR_MOBILE_DDDS = {
+    "11", "12", "13", "14", "15", "16", "17", "18", "19",
+    "21", "22", "24", "27", "28",
+    "31", "32", "33", "34", "35", "37", "38",
+    "41", "42", "43", "44", "45", "46", "47", "48", "49",
+    "51", "53", "54", "55",
+    "61", "62", "63", "64", "65", "66", "67", "68", "69",
+    "71", "73", "74", "75", "77", "79",
+    "81", "82", "83", "84", "85", "86", "87", "88", "89",
+    "91", "92", "93", "94", "95", "96", "97", "98", "99",
+}
+
+
+def _normalize_br_whatsapp(value: str | None) -> str:
+    """Valida WhatsApp móvel brasileiro e normaliza para +55DD9XXXXXXXX."""
+    digits = re.sub(r"\D", "", value or "")
+    if len(digits) == 13 and digits.startswith("55"):
+        digits = digits[2:]
+    if (
+        len(digits) != 11
+        or digits[:2] not in _BR_MOBILE_DDDS
+        or digits[2] != "9"
+    ):
+        raise ValueError("WhatsApp inválido. Informe DDD + celular com 9 dígitos.")
+    return f"+55{digits}"
+
+
 def _validate_http_url(value: str | None) -> str | None:
     """Aceita apenas links http(s); bloqueia esquemas como javascript: e data:."""
     value = _clean_text(value)
@@ -441,7 +468,7 @@ class UserUpdate(BaseModel):
 class EbookLeadCreate(BaseModel):
     nome: str
     email: str
-    whatsapp: str | None = None
+    whatsapp: str
     area_profissional: str | None = None
 
     origem: str = "direto"
@@ -1685,11 +1712,16 @@ def create_ebook_lead(
             detail="Nome é obrigatório.",
         )
 
-    if not email:
+    if not email or len(email) > 255 or not _EMAIL_PATTERN.match(email):
         raise HTTPException(
             status_code=400,
-            detail="E-mail é obrigatório.",
+            detail="E-mail inválido.",
         )
+
+    try:
+        whatsapp = _normalize_br_whatsapp(data.whatsapp)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     if not data.consentimento:
         raise HTTPException(
@@ -1710,6 +1742,8 @@ def create_ebook_lead(
         # Lead, registra o novo download na linha do tempo e dispara o e-mail conforme
         # o consentimento. A resposta é idêntica à de e-mail novo (EBOOK_PUBLIC_RESPONSE).
         lead_existente.consentimento_contato = True  # consentimento dado neste download
+        # O dado mais recente veio de um formulário validado; mantém o CRM atualizado.
+        lead_existente.telefone = whatsapp
         db.add(
             Interaction(
                 lead_id=lead_existente.id,
@@ -1729,7 +1763,7 @@ def create_ebook_lead(
         nome=nome,
 
         email=email,
-        telefone=data.whatsapp,
+        telefone=whatsapp,
         area_profissional=
             data.area_profissional,
 
@@ -1759,6 +1793,14 @@ def create_ebook_lead(
 
     db.add(novo_lead)
     db.flush()
+    db.add(
+        Interaction(
+            lead_id=novo_lead.id,
+            tipo="Download e-book",
+            descricao="Primeiro download do e-book gratuito por este contato.",
+            resultado="Registrado",
+        )
+    )
     record_touchpoint(db, novo_lead, "ebook", data, data.origem)
     db.commit()
     db.refresh(novo_lead)

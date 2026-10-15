@@ -5,7 +5,7 @@ import pytest
 import email_service
 from models import EmailLog
 
-PAYLOAD = {"nome": "Ana Lima", "email": "ana@exemplo.com", "consentimento": True}
+PAYLOAD = {"nome": "Ana Lima", "email": "ana@exemplo.com", "whatsapp": "(24) 99999-0000", "consentimento": True}
 
 
 class FakeProvider:
@@ -25,7 +25,7 @@ class FakeProvider:
 def email_env(monkeypatch):
     for name in (
         "EMAIL_AUTOMATION_ENABLED", "EMAIL_PROVIDER", "EMAIL_FROM_ADDRESS", "EMAIL_FROM_NAME",
-        "EBOOK_DELIVERY_URL", "PAID_PRODUCT_URL", "EMAIL_COMMERCIAL_ENABLED", "SMTP_HOST",
+        "EMAIL_REPLY_TO", "EBOOK_DELIVERY_URL", "PAID_PRODUCT_URL", "EMAIL_COMMERCIAL_ENABLED", "SMTP_HOST",
     ):
         monkeypatch.delenv(name, raising=False)
     return monkeypatch
@@ -85,7 +85,9 @@ def test_enabled_sends_delivery_and_registers_interaction(client, admin_headers,
     assert _logs() == [("enviado", "entrega_material", None)]
 
     interactions = _interactions(client, admin_headers, _lead_id(client, admin_headers, PAYLOAD["email"]))
-    assert [i["tipo"] for i in interactions] == ["E-mail automático"]
+    tipos = [i["tipo"] for i in interactions]
+    assert tipos.count("Download e-book") == 1
+    assert tipos.count("E-mail automático") == 1
 
 
 def test_no_commercial_link_without_paid_product_url(client, provider, email_env):
@@ -123,7 +125,7 @@ def test_provider_failure_never_blocks_lead_and_is_logged(client, admin_headers,
     status, template, detail = _logs()[0]
     assert (status, template) == ("falha", "entrega_material")
     assert "provedor fora do ar" in detail
-    assert _interactions(client, admin_headers, _lead_id(client, admin_headers, PAYLOAD["email"])) == []
+    assert [i["tipo"] for i in _interactions(client, admin_headers, _lead_id(client, admin_headers, PAYLOAD["email"]))] == ["Download e-book"]
 
 
 def test_missing_sender_logs_failure_without_sending(client, provider, email_env):
@@ -131,6 +133,13 @@ def test_missing_sender_logs_failure_without_sending(client, provider, email_env
     assert client.post("/api/public/leads/ebook", json=PAYLOAD).status_code == 201
     assert provider.sent == []
     assert _logs()[0][0] == "falha"
+
+
+def test_reply_to_can_point_to_commercial_inbox(client, provider, email_env):
+    _enable(email_env)
+    email_env.setenv("EMAIL_REPLY_TO", "SARGrowth@proton.me")
+    assert client.post("/api/public/leads/ebook", json=PAYLOAD).status_code == 201
+    assert provider.sent[0]["Reply-To"] == "SARGrowth@proton.me"
 
 
 def test_without_consent_nothing_is_sent(provider, email_env):
@@ -201,7 +210,7 @@ def test_repeat_download_reuses_lead_registers_interaction_and_sends_again(
     assert _lead_count("ana@exemplo.com") == 1
 
     tipos = [i["tipo"] for i in _interactions(client, admin_headers, lead_id)]
-    assert tipos.count("Download e-book") == 1
+    assert tipos.count("Download e-book") == 2
     assert tipos.count("E-mail automático") == 2
     assert len(provider.sent) == 2
 
@@ -211,7 +220,7 @@ def test_repeat_download_with_automation_off_still_works_and_registers(client, a
     lead_id = _lead_id(client, admin_headers, PAYLOAD["email"])
     assert client.post("/api/public/leads/ebook", json=PAYLOAD).status_code == 201
     assert provider.sent == []
-    assert [i["tipo"] for i in _interactions(client, admin_headers, lead_id)] == ["Download e-book"]
+    assert [i["tipo"] for i in _interactions(client, admin_headers, lead_id)] == ["Download e-book", "Download e-book"]
 
 
 def test_repeat_download_of_crm_lead_without_consent_records_consent_and_sends(
@@ -220,7 +229,7 @@ def test_repeat_download_of_crm_lead_without_consent_records_consent_and_sends(
     _enable(email_env)
     lead = create_lead(nome="Rui", email="rui@exemplo.com", consentimento_contato=False)
     response = client.post(
-        "/api/public/leads/ebook", json={"nome": "Rui", "email": "rui@exemplo.com", "consentimento": True}
+        "/api/public/leads/ebook", json={"nome": "Rui", "email": "rui@exemplo.com", "whatsapp": "(24) 99999-0000", "consentimento": True}
     )
     assert response.status_code == 201
     assert _lead_count("rui@exemplo.com") == 1
@@ -232,7 +241,7 @@ def test_repeat_download_of_crm_lead_without_consent_records_consent_and_sends(
 def test_repeat_download_still_requires_consent(client, create_lead):
     create_lead(nome="Rui", email="rui@exemplo.com")
     response = client.post(
-        "/api/public/leads/ebook", json={"nome": "Rui", "email": "rui@exemplo.com", "consentimento": False}
+        "/api/public/leads/ebook", json={"nome": "Rui", "email": "rui@exemplo.com", "whatsapp": "(24) 99999-0000", "consentimento": False}
     )
     assert response.status_code == 400
 
@@ -269,7 +278,7 @@ def test_public_response_is_identical_for_new_and_existing_email(client, admin_h
         "nome": "Cadastrado no CRM", "origem": "Instagram", "objetivo": "x", "interesse": "Alto",
         "email": "crm@exemplo.com", "consentimento_contato": True,
     })
-    crm = client.post("/api/public/leads/ebook", json={"nome": "Outro Nome", "email": "crm@exemplo.com", "consentimento": True})
+    crm = client.post("/api/public/leads/ebook", json={"nome": "Outro Nome", "email": "crm@exemplo.com", "whatsapp": "(24) 99999-0000", "consentimento": True})
     assert crm.status_code == 201 and crm.content == novo.content
 
     corpo = novo.json()
@@ -285,7 +294,7 @@ def test_uniform_response_does_not_change_internal_behaviour(client, admin_heade
     assert _lead_count("ana@exemplo.com") == 1  # sem duplicata
     lead_id = _lead_id(client, admin_headers, "ana@exemplo.com")
     tipos = [i["tipo"] for i in _interactions(client, admin_headers, lead_id)]
-    assert tipos.count("Download e-book") == 1  # interação do novo download
+    assert tipos.count("Download e-book") == 2  # primeiro download + novo download
     assert tipos.count("E-mail automático") == 2  # automação segue funcionando nos dois
     assert len(provider.sent) == 2
     detail = client.get(f"/api/leads/{lead_id}", headers=admin_headers).json()
@@ -305,7 +314,7 @@ def test_provider_failure_does_not_break_uniform_response_for_existing_lead(clie
 
 def test_uniform_response_still_requires_consent_for_both_cases(client, create_lead):
     create_lead(nome="Rui", email="rui@exemplo.com")
-    sem = {"nome": "X", "consentimento": False}
+    sem = {"nome": "X", "whatsapp": "(24) 99999-0000", "consentimento": False}
     novo = client.post("/api/public/leads/ebook", json={**sem, "email": "novo@exemplo.com"})
     existente = client.post("/api/public/leads/ebook", json={**sem, "email": "rui@exemplo.com"})
     assert novo.status_code == existente.status_code == 400

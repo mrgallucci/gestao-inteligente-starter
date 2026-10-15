@@ -54,6 +54,7 @@ class EmailSettings:
     provider: str
     from_address: str
     from_name: str
+    reply_to: str
     delivery_url: str | None
     paid_product_url: str | None
     commercial_enabled: bool
@@ -88,6 +89,7 @@ def load_settings() -> EmailSettings:
         provider=(_env_str("EMAIL_PROVIDER") or "console").lower(),
         from_address=_env_str("EMAIL_FROM_ADDRESS"),
         from_name=_env_str("EMAIL_FROM_NAME"),
+        reply_to=_env_str("EMAIL_REPLY_TO"),
         delivery_url=_valid_http_url(_env_str("EBOOK_DELIVERY_URL")),
         paid_product_url=_valid_http_url(_env_str("PAID_PRODUCT_URL")),
         commercial_enabled=commercial_requested and not is_production,
@@ -219,6 +221,8 @@ def build_message(settings: EmailSettings, to: str, subject: str, text: str, htm
     message["Subject"] = subject
     message["From"] = formataddr((settings.from_name, settings.from_address))
     message["To"] = to
+    if settings.reply_to:
+        message["Reply-To"] = settings.reply_to
     message.set_content(text)
     message.add_alternative(html, subtype="html")
     return message
