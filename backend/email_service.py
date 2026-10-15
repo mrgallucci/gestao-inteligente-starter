@@ -160,7 +160,7 @@ def build_provider(settings: EmailSettings) -> EmailProvider:
 # ---------------------------------------------------------------------------
 
 _SUBJECTS = {
-    TEMPLATE_DELIVERY: "Seu e-book está a caminho",
+    TEMPLATE_DELIVERY: "Seu acesso ao e-book SargLab",
     TEMPLATE_COMMERCIAL: "Um próximo passo para você",
 }
 
@@ -185,12 +185,23 @@ def render_template(
     html_parts = [f"<p>{escape(greeting)}</p>"]
 
     if template == TEMPLATE_DELIVERY:
-        text_lines.append("Obrigado por baixar o nosso e-book.")
-        html_parts.append("<p>Obrigado por baixar o nosso e-book.</p>")
+        text_lines += [
+            "Seu acesso ao e-book “SargLab — IA para quem tem trabalho pra fazer” está pronto.",
+            "",
+        ]
+        html_parts.append(
+            '<p>Seu acesso ao e-book <strong>SargLab — IA para quem tem trabalho pra fazer</strong> está pronto.</p>'
+        )
         if delivery_url:
-            text_lines += ["Acesse o material aqui:", delivery_url]
+            safe_url = escape(delivery_url, quote=True)
+            text_lines += ["Acesse o material pelo link abaixo:", delivery_url]
             html_parts.append(
-                f'<p>Acesse o material: <a href="{escape(delivery_url, quote=True)}">abrir e-book</a></p>'
+                '<p style="margin:24px 0">'
+                f'<a href="{safe_url}" style="display:inline-block;background:#3457FF;color:#ffffff;'
+                'text-decoration:none;font-weight:700;padding:12px 18px;border-radius:8px">'
+                'Acessar e-book</a></p>'
+                '<p style="color:#7B879B;font-size:12px">Se o botão não abrir, copie e cole este endereço no navegador:<br>'
+                f'<a href="{safe_url}">{safe_url}</a></p>'
             )
         if include_commercial_cta and paid_product_url:
             text_lines += ["", "Se quiser ir além, conheça a versão completa:", paid_product_url]
