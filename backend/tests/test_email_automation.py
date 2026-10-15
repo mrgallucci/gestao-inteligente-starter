@@ -25,7 +25,7 @@ class FakeProvider:
 def email_env(monkeypatch):
     for name in (
         "EMAIL_AUTOMATION_ENABLED", "EMAIL_PROVIDER", "EMAIL_FROM_ADDRESS", "EMAIL_FROM_NAME",
-        "EBOOK_DELIVERY_URL", "PAID_PRODUCT_URL", "EMAIL_COMMERCIAL_ENABLED", "SMTP_HOST",
+        "EMAIL_REPLY_TO", "EBOOK_DELIVERY_URL", "PAID_PRODUCT_URL", "EMAIL_COMMERCIAL_ENABLED", "SMTP_HOST",
     ):
         monkeypatch.delenv(name, raising=False)
     return monkeypatch
@@ -133,6 +133,13 @@ def test_missing_sender_logs_failure_without_sending(client, provider, email_env
     assert client.post("/api/public/leads/ebook", json=PAYLOAD).status_code == 201
     assert provider.sent == []
     assert _logs()[0][0] == "falha"
+
+
+def test_reply_to_can_point_to_commercial_inbox(client, provider, email_env):
+    _enable(email_env)
+    email_env.setenv("EMAIL_REPLY_TO", "SARGrowth@proton.me")
+    assert client.post("/api/public/leads/ebook", json=PAYLOAD).status_code == 201
+    assert provider.sent[0]["Reply-To"] == "SARGrowth@proton.me"
 
 
 def test_without_consent_nothing_is_sent(provider, email_env):
