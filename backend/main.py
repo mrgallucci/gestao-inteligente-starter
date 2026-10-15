@@ -1742,8 +1742,8 @@ def create_ebook_lead(
         # Lead, registra o novo download na linha do tempo e dispara o e-mail conforme
         # o consentimento. A resposta é idêntica à de e-mail novo (EBOOK_PUBLIC_RESPONSE).
         lead_existente.consentimento_contato = True  # consentimento dado neste download
-        if not lead_existente.telefone:
-            lead_existente.telefone = whatsapp
+        # O dado mais recente veio de um formulário validado; mantém o CRM atualizado.
+        lead_existente.telefone = whatsapp
         db.add(
             Interaction(
                 lead_id=lead_existente.id,
