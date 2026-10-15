@@ -81,7 +81,11 @@ def test_enabled_sends_delivery_and_registers_interaction(client, admin_headers,
     message = provider.sent[0]
     assert message["To"] == "ana@exemplo.com"
     body = message.get_body(preferencelist=("plain",)).get_content()
+    html = message.get_body(preferencelist=("html",)).get_content()
+    assert message["Subject"] == "Seu acesso ao e-book SargLab"
     assert "https://exemplo.test/ebook.pdf" in body
+    assert "Acessar e-book" in html
+    assert "SargLab — IA para quem tem trabalho pra fazer" in html
     assert _logs() == [("enviado", "entrega_material", None)]
 
     interactions = _interactions(client, admin_headers, _lead_id(client, admin_headers, PAYLOAD["email"]))
