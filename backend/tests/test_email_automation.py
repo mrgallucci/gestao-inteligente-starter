@@ -85,7 +85,9 @@ def test_enabled_sends_delivery_and_registers_interaction(client, admin_headers,
     assert _logs() == [("enviado", "entrega_material", None)]
 
     interactions = _interactions(client, admin_headers, _lead_id(client, admin_headers, PAYLOAD["email"]))
-    tipos = [i["tipo"] for i in interactions]\n    assert tipos.count("Download e-book") == 1\n    assert tipos.count("E-mail automático") == 1
+    tipos = [i["tipo"] for i in interactions]
+    assert tipos.count("Download e-book") == 1
+    assert tipos.count("E-mail automático") == 1
 
 
 def test_no_commercial_link_without_paid_product_url(client, provider, email_env):
