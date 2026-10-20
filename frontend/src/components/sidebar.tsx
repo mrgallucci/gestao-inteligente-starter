@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import {
+  Bot,
   BookOpenCheck,
   CalendarClock,
   GraduationCap,
@@ -30,6 +31,7 @@ const items = [
   { href: "/followups", label: "Follow-ups", icon: CalendarClock, roles: ["admin", "vendedor"] },
   { href: "/workshop", label: "Treinamento IA", icon: Presentation, roles: ["admin", "vendedor"] },
   { href: "/omnichannel", label: "Omnichannel", icon: MessagesSquare, roles: ["admin", "vendedor"] },
+  { href: "/assistente-sara", label: "Assistente Sara", icon: Bot, roles: ["admin", "vendedor"] },
   { href: "/automacoes", label: "Automações", icon: Sparkles, roles: ["admin", "vendedor"] },
   { href: "/customer-analytics", label: "Customer Analytics", icon: UserRound, roles: ["admin"] },
   { href: "/marketing", label: "Marketing Analytics", icon: Megaphone, roles: ["admin"] },

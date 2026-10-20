@@ -17,6 +17,7 @@ export function canAccessPath(role: string, pathname: string) {
       pathname.startsWith("/followups") ||
       pathname.startsWith("/sales") ||
       pathname.startsWith("/omnichannel") ||
+      pathname.startsWith("/assistente-sara") ||
       pathname.startsWith("/automacoes") ||
       pathname.startsWith("/workshop")
     );

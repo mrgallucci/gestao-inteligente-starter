@@ -606,6 +606,23 @@ def require_roles(
         return current_user
 
     return role_checker
+    return role_checker
+
+
+# ======================================
+# ASSISTENTE SARA — INTEGRAÇÃO FASE 1
+# ======================================
+
+from sara_status import router as sara_router
+
+app.include_router(
+    sara_router,
+    dependencies=[
+        Depends(
+            require_roles("admin", "vendedor")
+        )
+    ],
+)
 
 
 def validate_enrollment_access(
