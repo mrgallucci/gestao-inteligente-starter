@@ -1986,6 +1986,128 @@ def marketing_attribution(
     }
 
 
+
+# =========================================================
+# SARGLAB / ANALISE DE CAPTACAO DOS E-BOOKS
+# =========================================================
+
+@app.get("/api/sarglab/ebooks/analytics")
+def sarglab_ebooks_analytics(
+    produto: str = "instagram",
+    dias: int = 30,
+    current_user: User = Depends(require_roles("admin")),
+    db: Session = Depends(get_db),
+):
+    """Analise de formularios enviados, leads unicos e status SMTP.
+
+    Apenas equipe admin. 'Solicitacoes' vem de LeadTouchpoint e NAO significa
+    download, abertura do email ou venda. E-mails sao contados separadamente
+    pelos logs do provedor; nao ha correlacao individual envio<->solicitacao.
+    """
+    canais = {"instagram": ("ebook-instagram",),
+              "primeiro": ("ebook",),
+              "todos": ("ebook", "ebook-instagram")}
+    templates = {"instagram": ("entrega_instagram",),
+                 "primeiro": ("entrega_material",),
+                 "todos": ("entrega_material", "entrega_instagram")}
+    if produto not in canais:
+        raise HTTPException(status_code=400, detail="Produto invalido.")
+    if dias not in (0, 7, 30, 90, 365):
+        raise HTTPException(status_code=400, detail="Periodo invalido.")
+
+    inicio = datetime.now() - timedelta(days=dias) if dias else None
+    q = (db.query(LeadTouchpoint, Lead)
+         .join(Lead, Lead.id == LeadTouchpoint.lead_id)
+         .filter(LeadTouchpoint.canal.in_(canais[produto])))
+    if inicio:
+        q = q.filter(LeadTouchpoint.criado_em >= inicio)
+    registros = q.order_by(LeadTouchpoint.criado_em.desc(), LeadTouchpoint.id.desc()).all()
+
+    q_mail = db.query(EmailLog).filter(EmailLog.template.in_(templates[produto]))
+    if inicio:
+        q_mail = q_mail.filter(EmailLog.criado_em >= inicio)
+    emails = q_mail.all()
+
+    leads_ids = set()
+    origens = {}
+    campanhas = {}
+    serie = {}
+    status_lead = {}
+    recentes = []
+    for tp, lead in registros:
+        leads_ids.add(lead.id)
+        fonte = (tp.utm_source or tp.origem or "(nao informada)").strip().lower() or "(nao informada)"
+        campanha = (tp.utm_campaign or "(nao informada)").strip() or "(nao informada)"
+        dia = tp.criado_em.date().isoformat()
+        for grupo, chave in ((origens, fonte), (campanhas, campanha)):
+            entrada = grupo.setdefault(chave, {"solicitacoes": 0, "ids": set()})
+            entrada["solicitacoes"] += 1
+            entrada["ids"].add(lead.id)
+        serie[dia] = serie.get(dia, 0) + 1
+        status_lead[lead.id] = lead.status
+        if len(recentes) < 50:
+            recentes.append({
+                "lead_id": lead.id,
+                "nome": lead.nome,
+                "email": lead.email,
+                "area_profissional": lead.area_profissional,
+                "status_crm": lead.status,
+                "produto": "instagram" if tp.canal == "ebook-instagram" else "primeiro",
+                "origem": fonte,
+                "campanha": campanha,
+                "data": tp.criado_em.isoformat(),
+            })
+
+    def ordenar(grupo, campo):
+        return sorted(
+            [{campo: k, "solicitacoes": v["solicitacoes"], "leads_unicos": len(v["ids"])}
+             for k, v in grupo.items()],
+            key=lambda x: (-x["solicitacoes"], x[campo]),
+        )
+
+    contador_email = {"enviado": 0, "falha": 0, "ignorado": 0}
+    for msg in emails:
+        if msg.status in contador_email:
+            contador_email[msg.status] += 1
+
+    por_status = {}
+    for estado in status_lead.values():
+        por_status[estado] = por_status.get(estado, 0) + 1
+
+    return {
+        "produto": produto,
+        "dias": dias,
+        "atualizado_em": datetime.now().isoformat(),
+        "resumo": {
+            "solicitacoes": len(registros),
+            "leads_unicos": len(leads_ids),
+            "solicitacoes_adicionais": len(registros) - len(leads_ids),
+            "leads_convertidos_crm": sum(
+                1 for status in status_lead.values() if status in CONVERTED_STATUSES
+            ),
+        },
+        "emails": {
+            "total_registros": len(emails),
+            "envios_smtp": contador_email["enviado"],
+            "falhas": contador_email["falha"],
+            "ignorados": contador_email["ignorado"],
+        },
+        "por_origem": ordenar(origens, "origem"),
+        "por_campanha": ordenar(campanhas, "campanha"),
+        "por_status_crm": sorted(
+            [{"status": k, "leads_unicos": v} for k, v in por_status.items()],
+            key=lambda x: (-x["leads_unicos"], x["status"]),
+        ),
+        "por_dia": [{"data": dia, "solicitacoes": valor} for dia, valor in sorted(serie.items())],
+        "recentes": recentes,
+        "observacao": (
+            "Solicitacao e cadastro nao comprovam download, abertura, clique ou venda. "
+            "Envio SMTP indica aceite pelo servidor, nao entrega ou leitura. "
+            "Status comerciais refletem o CRM, sem atribuicao causal ao e-book."
+        ),
+    }
+
+
 @app.get("/api/leads")
 def list_leads(
     current_user: User = Depends(require_roles("admin", "vendedor")),
