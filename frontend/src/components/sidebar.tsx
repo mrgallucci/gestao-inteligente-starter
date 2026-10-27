@@ -32,6 +32,7 @@ const items = [
   { href: "/omnichannel", label: "Omnichannel", icon: MessagesSquare, roles: ["admin", "vendedor"] },
   { href: "/automacoes", label: "Automações", icon: Sparkles, roles: ["admin", "vendedor"] },
   { href: "/customer-analytics", label: "Customer Analytics", icon: UserRound, roles: ["admin"] },
+  { href: "/sarglab-analytics", label: "SargLab / Captação", icon: BookOpenCheck, roles: ["admin"] },
   { href: "/marketing", label: "Marketing Analytics", icon: Megaphone, roles: ["admin"] },
   { href: "/financeiro", label: "Financeiro", icon: WalletCards, roles: ["admin"] },
   { href: "/products", label: "Produtos", icon: Package, roles: ["admin"] },
