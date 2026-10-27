@@ -1,0 +1,36 @@
+name: Atualizar Next.js para release corrigida (SargLab)
+on:
+  push:
+    branches: [feature/sarglab-instagram-email-20261027]
+    paths: [.github/workflows/upgrade-next-sarglab.yml]
+permissions:
+  contents: write
+jobs:
+  upgrade:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Atualizar pacotes e arquivos lock
+        working-directory: frontend
+        run: |
+          npm install next@16.4.3 --save-exact
+          npm install eslint-config-next@16.4.3 --save-dev --save-exact
+          npm audit --omit=dev --audit-level=high
+      - name: Commit da atualizacao de dependencias
+        run: |
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git add frontend/package.json frontend/package-lock.json
+          if git diff --staged --quiet; then
+            echo "Sem mudancas no lock."
+          else
+            git commit -m "fix(security): atualizar Next.js e eslint-config-next para 16.4.3"
+            git push origin HEAD:refs/heads/feature/sarglab-instagram-email-20261027
+          fi
