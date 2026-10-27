@@ -323,3 +323,36 @@ def test_uniform_response_still_requires_consent_for_both_cases(client, create_l
     existente = client.post("/api/public/leads/ebook", json={**sem, "email": "rui@exemplo.com"})
     assert novo.status_code == existente.status_code == 400
     assert novo.json() == existente.json()
+
+
+# SargLab — Edição Instagram: contrato de entrega independente do e-book original.
+def test_instagram_ebook_delivery_uses_own_title_and_pdf(client, provider, email_env):
+    _enable(email_env, EBOOK_DELIVERY_URL="https://exemplo.test/ebook-original.pdf")
+    email_env.setenv("EBOOK_INSTAGRAM_DELIVERY_URL", "https://exemplo.test/instagram-sob-analise.pdf")
+    response = client.post("/api/public/leads/ebook/instagram", json=PAYLOAD)
+    assert response.status_code == 201
+    assert len(provider.sent) == 1
+    msg = provider.sent[0]
+    assert "Instagram sob análise" in msg["Subject"]
+    body = msg.get_body(preferencelist=("plain",)).get_content()
+    assert "https://exemplo.test/instagram-sob-analise.pdf" in body
+    assert "ebook-original.pdf" not in body
+    assert _logs() == [("enviado", "entrega_instagram", None)]
+
+
+def test_original_and_instagram_share_lead_but_deliver_different_material(client, provider, email_env):
+    _enable(email_env, EBOOK_DELIVERY_URL="https://exemplo.test/original.pdf")
+    email_env.setenv("EBOOK_INSTAGRAM_DELIVERY_URL", "https://exemplo.test/instagram.pdf")
+    r1 = client.post("/api/public/leads/ebook", json=PAYLOAD)
+    r2 = client.post("/api/public/leads/ebook/instagram", json=PAYLOAD)
+    assert r1.status_code == 201 and r2.status_code == 201
+    assert r1.json() == r2.json()
+    assert _lead_count(PAYLOAD["email"]) == 1
+    assert len(provider.sent) == 2
+    text1 = provider.sent[0].get_body(preferencelist=("plain",)).get_content()
+    text2 = provider.sent[1].get_body(preferencelist=("plain",)).get_content()
+    assert "original.pdf" in text1 and "instagram.pdf" not in text1
+    assert "instagram.pdf" in text2 and "original.pdf" not in text2
+    assert [(status, template) for status, template, _ in _logs()] == [
+        ("enviado", "entrega_material"), ("enviado", "entrega_instagram")
+    ]
