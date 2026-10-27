@@ -1480,7 +1480,7 @@ def dashboard_summary(
 # =========================================================
 
 
-def send_ebook_delivery_email(lead_id: int) -> None:
+def send_ebook_delivery_email(lead_id: int, ebook_key: str = "original") -> None:
     """Envia o e-mail de entrega do material e registra o resultado.
 
     Usa sessão própria (executa após a resposta). Nunca levanta exceção.
@@ -1489,6 +1489,13 @@ def send_ebook_delivery_email(lead_id: int) -> None:
         settings = email_service.load_settings()
         if not settings.enabled:
             return  # feature flag desligada: nada é enviado nem registrado
+
+        is_instagram = ebook_key == "instagram"
+        # A URL pode ser substituída no provedor de hospedagem, sem afetar o e-book original.
+        instagram_delivery_url = os.getenv(
+            "EBOOK_INSTAGRAM_DELIVERY_URL",
+            "https://sargtech.com.br/assets/downloads/sarglab-instagram-sob-analise.pdf",
+        ).strip()
 
         with SessionLocal() as db:
             lead = db.query(Lead).filter(Lead.id == lead_id).first()
@@ -1501,12 +1508,14 @@ def send_ebook_delivery_email(lead_id: int) -> None:
                 email=lead.email,
                 consentimento=lead.consentimento_contato,
                 settings=settings,
+                ebook_title="SargLab — Instagram sob análise" if is_instagram else None,
+                delivery_url_override=instagram_delivery_url if is_instagram else None,
             )
             db.add(
                 EmailLog(
                     lead_id=lead.id,
                     destinatario=lead.email,
-                    template=result.template,
+                    template="entrega_instagram" if is_instagram else result.template,
                     provider=result.provider,
                     status=result.status,
                     detalhe=result.detail,
@@ -1517,7 +1526,7 @@ def send_ebook_delivery_email(lead_id: int) -> None:
                     Interaction(
                         lead_id=lead.id,
                         tipo="E-mail automático",
-                        descricao="Entrega do e-book enviada por e-mail automático.",
+                        descricao=("Entrega do e-book Instagram sob análise enviada por e-mail." if is_instagram else "Entrega do e-book enviada por e-mail automático."),
                         resultado="Enviado",
                     )
                 )
@@ -1693,16 +1702,20 @@ EBOOK_PUBLIC_RESPONSE = {
 }
 
 
+@app.post("/api/public/leads/ebook/instagram", status_code=201)
 @app.post(
     "/api/public/leads/ebook",
     status_code=201,
 )
 def create_ebook_lead(
+    request: Request,
     data: EbookLeadCreate,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     _rate: None = Depends(public_rate_limit),
 ):
+    is_instagram = request.url.path.rstrip("/").endswith("/ebook/instagram")
+    canal = "ebook-instagram" if is_instagram else "ebook"
     nome = data.nome.strip()
     email = data.email.strip().lower()
 
@@ -1748,14 +1761,14 @@ def create_ebook_lead(
             Interaction(
                 lead_id=lead_existente.id,
                 tipo="Download e-book",
-                descricao="Novo download do e-book gratuito por este contato.",
+                descricao=("Solicitação do e-book Instagram sob análise por este contato." if is_instagram else "Novo download do e-book gratuito por este contato."),
                 resultado="Registrado",
             )
         )
-        record_touchpoint(db, lead_existente, "ebook", data, data.origem)
+        record_touchpoint(db, lead_existente, canal, data, data.origem)
         db.commit()
 
-        background_tasks.add_task(send_ebook_delivery_email, lead_existente.id)
+        background_tasks.add_task(send_ebook_delivery_email, lead_existente.id, "instagram" if is_instagram else "original")
 
         return dict(EBOOK_PUBLIC_RESPONSE)
 
@@ -1783,10 +1796,7 @@ def create_ebook_lead(
 
         formato_interesse="E-book",
 
-        oferta_interesse=(
-            "SargLab — IA para quem "
-            "tem trabalho pra fazer"
-        ),
+        oferta_interesse=("SargLab — Instagram sob análise" if is_instagram else "SargLab — IA para quem tem trabalho pra fazer"),
 
         contatos=0,
     )
@@ -1797,17 +1807,17 @@ def create_ebook_lead(
         Interaction(
             lead_id=novo_lead.id,
             tipo="Download e-book",
-            descricao="Primeiro download do e-book gratuito por este contato.",
+            descricao=("Primeira solicitação do e-book Instagram sob análise." if is_instagram else "Primeiro download do e-book gratuito por este contato."),
             resultado="Registrado",
         )
     )
-    record_touchpoint(db, novo_lead, "ebook", data, data.origem)
+    record_touchpoint(db, novo_lead, canal, data, data.origem)
     db.commit()
     db.refresh(novo_lead)
 
     # E-mail pós-download: roda DEPOIS do commit e fora da requisição. Qualquer
     # falha do provedor fica registrada, mas nunca desfaz nem bloqueia o Lead.
-    background_tasks.add_task(send_ebook_delivery_email, novo_lead.id)
+    background_tasks.add_task(send_ebook_delivery_email, novo_lead.id, "instagram" if is_instagram else "original")
 
     return dict(EBOOK_PUBLIC_RESPONSE)
 

@@ -177,6 +177,7 @@ def render_template(
     delivery_url: str | None = None,
     paid_product_url: str | None = None,
     include_commercial_cta: bool = False,
+    ebook_title: str | None = None,
 ) -> tuple[str, str, str]:
     """Devolve (assunto, texto, html). Nenhum link é inventado."""
     first = _first_name(nome)
@@ -185,12 +186,13 @@ def render_template(
     html_parts = [f"<p>{escape(greeting)}</p>"]
 
     if template == TEMPLATE_DELIVERY:
+        title = ebook_title or "SargLab — IA para quem tem trabalho pra fazer"
         text_lines += [
-            "Seu acesso ao e-book “SargLab — IA para quem tem trabalho pra fazer” está pronto.",
+            f"Seu acesso ao e-book “{title}” está pronto.",
             "",
         ]
         html_parts.append(
-            '<p>Seu acesso ao e-book <strong>SargLab — IA para quem tem trabalho pra fazer</strong> está pronto.</p>'
+            f'<p>Seu acesso ao e-book <strong>{escape(title)}</strong> está pronto.</p>'
         )
         if delivery_url:
             safe_url = escape(delivery_url, quote=True)
@@ -224,7 +226,8 @@ def render_template(
         '<p style="color:#7B879B;font-size:12px">Para deixar de receber e-mails, '
         "responda esta mensagem pedindo a remoção.</p>"
     )
-    return _SUBJECTS[template], "\n".join(text_lines), "".join(html_parts)
+    subject = f"Seu acesso ao e-book {ebook_title}" if template == TEMPLATE_DELIVERY and ebook_title else _SUBJECTS[template]
+    return subject, "\n".join(text_lines), "".join(html_parts)
 
 
 def build_message(settings: EmailSettings, to: str, subject: str, text: str, html: str) -> EmailMessage:
@@ -269,6 +272,8 @@ def send_template(
     consentimento: bool,
     settings: EmailSettings | None = None,
     provider: EmailProvider | None = None,
+    ebook_title: str | None = None,
+    delivery_url_override: str | None = None,
 ) -> SendResult:
     """Envia um template respeitando flag, consentimento e configuração. Nunca levanta."""
     settings = settings or load_settings()
@@ -283,12 +288,15 @@ def send_template(
         include_cta = template == TEMPLATE_DELIVERY and settings.commercial_cta_active
         if template == TEMPLATE_COMMERCIAL and not settings.commercial_cta_active:
             return SendResult("ignorado", template, settings.provider, "Etapa comercial inativa (flag ou URL ausente).")
+        if delivery_url_override is not None and not _valid_http_url(delivery_url_override):
+            return SendResult("falha", template, settings.provider, "URL de entrega inválida.")
         subject, text, html = render_template(
             template,
             nome=nome,
-            delivery_url=settings.delivery_url,
+            delivery_url=delivery_url_override if delivery_url_override is not None else settings.delivery_url,
             paid_product_url=settings.paid_product_url,
             include_commercial_cta=include_cta,
+            ebook_title=ebook_title,
         )
         message = build_message(settings, email, subject, text, html)
         (provider or build_provider(settings)).send(message)
